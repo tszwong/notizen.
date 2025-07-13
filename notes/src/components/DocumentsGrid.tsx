@@ -1,4 +1,4 @@
-import * as React from 'react';
+// import * as React from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 
 const columns = [
@@ -22,7 +22,7 @@ export default function NotesGrid() {
     <div
         className={`note-editor-card`}
         style={{ 
-            height: 850, 
+            height: '100%',
             width: '100%',
             padding: '2rem'
         }}

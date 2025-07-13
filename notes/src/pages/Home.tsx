@@ -38,7 +38,8 @@ export default function Home() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: isEditorExpanded ? 'stretch' : 'stretch',
-        maxWidth: isEditorExpanded ? '100%' : 'auto'
+        maxWidth: isEditorExpanded ? '100%' : 'auto',
+        transition: 'max-width 0.3s ease'
       }}>
         <div style={{ 
           display: 'flex', 
