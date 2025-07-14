@@ -159,5 +159,27 @@ input, select, textarea {
 }
 
 .react-calendar-heatmap-month-labels {
-  display: none;
+  /* display: none; */
+  font-weight: 1000;
+}
+
+/* Button group for Home page */
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  position: relative;
+}
+.button-group .hide-when-study {
+  transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+.button-group.study-mode-active .hide-when-study {
+  opacity: 0;
+  transform: translateX(60px);
+  pointer-events: none;
+}
+.button-group > button {
+  transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1);
 }
