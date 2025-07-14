@@ -9,37 +9,37 @@ interface NoteEditorProps {
 }
 
 const NoteEditor: React.FC<NoteEditorProps> = ({ onContentChange, className = '' }) => {
-  const [content, setContent] = useState<string>("");
+    const [content, setContent] = useState<string>("");
 
-  // Comprehensive toolbar configuration
-  const modules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      [{ 'font': [] }],
-      [{ 'size': ['small', false, 'large', 'huge'] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }],
-      [{ 'background': [] }],
-      ['blockquote', 'code-block'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'align': [] }],
-      ['link', 'image', 'video'],
-      ['clean']
-    ],
+    // Comprehensive toolbar configuration
+    const modules = {
+        toolbar: [
+            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+            [{ 'font': [] }],
+            [{ 'size': ['small', false, 'large', 'huge'] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'color': [] }],
+            [{ 'background': [] }],
+            ['blockquote', 'code-block'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'indent': '-1'}, { 'indent': '+1' }],
+            [{ 'align': [] }],
+            ['link', 'image', 'video'],
+            ['clean']
+        ],
 
     clipboard: {
-      matchVisual: false,
+        matchVisual: false,
     },
     history: {
-      delay: 2000,
-      maxStack: 500,
-      userOnly: true
+        delay: 2000,
+        maxStack: 500,
+        userOnly: true
     }
-  };
+};
 
-  // Custom formats for the editor
-  const formats = [
+// Custom formats for the editor
+const formats = [
     'header', 'font', 'size',
     'bold', 'italic', 'underline', 'strike',
     'color', 'background',
@@ -48,7 +48,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ onContentChange, className = ''
     'indent', 'align',
     'link', 'image', 'video',
     'clean'
-  ];
+];
 
   const handleChange = (value: string) => {
     setContent(value);

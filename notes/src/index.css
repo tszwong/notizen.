@@ -140,3 +140,24 @@ input, select, textarea {
 .note-editor-card .ql-toolbar .ql-formats > * {
   margin-top: .75rem;
 }
+
+/* Calendar heatmap color scale */
+.color-empty { fill: #eee; }
+.color-scale-1 { fill: #c6e48b; }
+.color-scale-2 { fill: #7bc96f; }
+.color-scale-3 { fill: #239a3b; }
+.color-scale-4 { fill: #196127; }
+
+.react-calendar-heatmap-month-label,
+.react-calendar-heatmap-month-labels,
+.react-calendar-heatmap text {
+  fill: #232323;
+}
+
+.react-calendar-heatmap rect {
+  rx: 4.2;
+}
+
+.react-calendar-heatmap-month-labels {
+  display: none;
+}

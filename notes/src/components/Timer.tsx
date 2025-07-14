@@ -248,6 +248,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
           position: 'relative',
           overflow: 'hidden',
           padding: '2rem 0.5rem',
+          height: '520px'
         }}
       >
         {/* Mode indicator */}
