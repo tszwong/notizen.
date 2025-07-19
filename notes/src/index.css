@@ -40,7 +40,7 @@ h1, h2, h3, h4 {
   letter-spacing: 0.5px;
 }
 
-.button, button {
+.button {
   background: rgba(255,255,255,0.7);
   color: var(--color-accent);
   border: 1.5px solid var(--color-accent);
@@ -51,7 +51,7 @@ h1, h2, h3, h4 {
   transition: background 0.2s, color 0.2s;
   box-shadow: none;
 }
-.button:hover, button:hover {
+.button:hover {
   background: var(--color-accent);
   color: var(--color-surface);
 }
@@ -143,10 +143,10 @@ input, select, textarea {
 
 /* Calendar heatmap color scale */
 .color-empty { fill: #eee; }
-.color-scale-1 { fill: #c6e48b; }
-.color-scale-2 { fill: #7bc96f; }
-.color-scale-3 { fill: #239a3b; }
-.color-scale-4 { fill: #196127; }
+/* .color-scale { fill: #c6e48b; }
+.color-scale-2 { fill: #7bc96f; } */
+.color-scale-1 { fill: #239a3b; }
+/* .color-scale-4 { fill: #196127; } */
 
 .react-calendar-heatmap-month-label,
 .react-calendar-heatmap-month-labels,
@@ -169,17 +169,212 @@ input, select, textarea {
   gap: 0.5rem;
   position: relative;
 }
-.button-group .hide-when-study {
+.button-group .hide-when-focus {
   transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1);
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
 }
-.button-group.study-mode-active .hide-when-study {
+.button-group.focusMode-active .hide-when-focus {
   opacity: 0;
   transform: translateX(60px);
   pointer-events: none;
 }
 .button-group > button {
   transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Fancy animated border effect for button group buttons */
+.button-corner-anim {
+  position: relative;
+  border: none;
+  color: var(--color-accent);
+  background: rgba(255,255,255,0.7);
+  transition: color 0.3s, font-size 0.3s;
+  overflow: visible;
+}
+.button-corner-anim > span.corner-anim-span {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 2;
+}
+.button-corner-anim .button-content {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.button-corner-anim::before,
+.button-corner-anim::after,
+.button-corner-anim > span.corner-anim-span::before,
+.button-corner-anim > span.corner-anim-span::after {
+  width: 8px;
+  height: 8px;
+  position: absolute;
+  transition: all 0.5s;
+  border: 2.5px solid var(--color-accent);
+  opacity: 0;
+  content: "";
+  pointer-events: none;
+}
+.button-corner-anim::before {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+  transform: translate(-50%, -50%);
+}
+.button-corner-anim::after {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+  transform: translate(-50%, 50%);
+}
+.button-corner-anim > span.corner-anim-span::before {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+  transform: translate(50%, -50%);
+}
+.button-corner-anim > span.corner-anim-span::after {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+  transform: translate(50%, 50%);
+}
+.button-corner-anim:hover {
+  color: #dd2470;
+  font-size: 1.15em;
+}
+.button-corner-anim:hover::before {
+  opacity: 1;
+  border-color: #dd2470;
+  transform: translate(-8px, -8px); /* top-left, with gap */
+}
+.button-corner-anim:hover::after {
+  opacity: 1;
+  border-color: #dd2470;
+  transform: translate(-8px, 14px); /* bottom-left, with extra bottom gap */
+}
+.button-corner-anim:hover > span.corner-anim-span::before {
+  opacity: 1;
+  border-color: #dd2470;
+  transform: translate(8px, -8px); /* top-right, with gap */
+}
+.button-corner-anim:hover > span.corner-anim-span::after {
+  opacity: 1;
+  border-color: #dd2470;
+  transform: translate(8px, 14px); /* bottom-right, with extra bottom gap */
+}
+
+/* Fancy animated border effect for non-button group buttons */
+.nbg-button-corner-anim {
+  position: relative;
+  border: none;
+  color: var(--color-accent);
+  background: rgba(255,255,255,0.7);
+  transition: color 0.3s, font-size 0.3s;
+  overflow: visible;
+}
+.nbg-button-corner-anim > span.nbg-corner-anim-span {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 2;
+}
+.nbg-button-corner-anim .nbg-button-content {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.nbg-button-corner-anim::before,
+.nbg-button-corner-anim::after,
+.nbg-button-corner-anim > span.nbg-corner-anim-span::before,
+.nbg-button-corner-anim > span.nbg-corner-anim-span::after {
+  width: 8px;
+  height: 8px;
+  position: absolute;
+  transition: all 0.5s;
+  border: 2.5px solid var(--color-accent);
+  opacity: 0;
+  content: "";
+  pointer-events: none;
+}
+.nbg-button-corner-anim::before {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+  transform: translate(-50%, -50%);
+}
+.nbg-button-corner-anim::after {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+  transform: translate(-50%, 50%);
+}
+.nbg-button-corner-anim > span.nbg-corner-anim-span::before {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+  transform: translate(50%, -50%);
+}
+.nbg-button-corner-anim > span.nbg-corner-anim-span::after {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+  transform: translate(50%, 50%);
+}
+.nbg-button-corner-anim:hover {
+  color: #dd2470;
+  font-size: 1.15em;
+}
+.nbg-button-corner-anim:hover::before,
+.nbg-button-corner-anim:hover::after,
+.nbg-button-corner-anim:hover > span.nbg-corner-anim-span::before,
+.nbg-button-corner-anim:hover > span.nbg-corner-anim-span::after {
+  opacity: 1;
+  border-color: #dd2470;
+  transform: translate(0, 0);
+}
+
+.key-effect {
+  background: rgb(255,139,125);
+  font-size: 20px;
+  color: white;
+  border-radius: 7px;
+  box-shadow: 0 7px 0px rgb(248,88,65);
+  display: inline-block;
+  transition: all .2s;
+  position: relative;
+  padding: 20px 25px;
+  top: 0;
+  cursor: pointer;
+  margin-bottom: 5px;
+}
+
+.key-effect:active {
+  top: 3px;
+  box-shadow: 0 2px 0px rgb(248,88,65);
+  transition: all .2s;
 }

@@ -115,7 +115,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
             
             // Timer completed
             if (timerRef.current) {
-              // Add a simple CSS animation class
+              // transition
               timerRef.current.style.transform = 'scale(1.05)';
               setTimeout(() => {
                 if (timerRef.current) {
