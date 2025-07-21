@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import 'react-calendar-heatmap/dist/styles.css';
 import '../index.css'; // Ensure your color classes are loaded
+import { useAuth } from './auth/AuthProvider';
 import { getHeatmapData } from '../utils/activityTracker';
 
 export default function CalendarHeatMap() {
+    const { user } = useAuth();
     const [values, setValues] = useState<{ date: string; count: number }[]>([]);
     
     const today = new Date();
@@ -21,9 +23,11 @@ export default function CalendarHeatMap() {
 
     // Load activity data
     useEffect(() => {
-        const activityData = getHeatmapData(startDate, endDate);
-        setValues(activityData);
-    }, [startDate, endDate]);
+        if (!user) return;
+        getHeatmapData(user, startDate, endDate).then(setValues);
+    }, [user, startDate, endDate]);
+
+    if (!user) return null;
 
     return (
         <div

@@ -3,7 +3,7 @@ import NoteEditor from "../components/NoteEditor";
 import Timer from "../components/Timer";
 import DocumentGrid from "../components/DocumentsGrid";
 import CalendarHeatMap from "../components/CalendarHeatMap";
-import UserAvatar from "../components/User";
+import LogoutButton from "../components/LogoutButton";
 import PressableButton from '../components/PressableButton';
 
 import AccessAlarmIcon from '@mui/icons-material/AccessAlarm';
@@ -13,9 +13,12 @@ import PlayLessonIcon from '@mui/icons-material/PlayLesson';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 
 import { Tooltip as ReactTooltip } from 'react-tooltip';
+import { useAuth } from '../components/auth/AuthProvider';
 import { recordActivity } from '../utils/activityTracker';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Home() {
+  const { user } = useAuth();
   const [showTimer, setShowTimer] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -52,7 +55,7 @@ export default function Home() {
       setNoteState({ ...noteState }); // trigger autosave effect
       await new Promise(resolve => setTimeout(resolve, 200)); // give autosave a moment
     }
-    recordActivity(); // Track activity when user creates a new note
+    if (user) await recordActivity(user); // Track activity when user creates a new note
     setNoteState({ noteId: null, title: '', content: '' });
   };
 
@@ -86,10 +89,11 @@ export default function Home() {
         flexDirection: 'column',
         alignItems: 'stretch',
         maxWidth: isEditorExpanded ? '100%' : showGrid ? '60%' : '70%',
+        width: isEditorExpanded ? '100%' : showGrid ? '60%' : '70%',
         height: isEditorExpanded ? '1000px' : '950px',
-        transition: 'max-width 0.3s ease'
+        transition: 'max-width 0.5s ease'
       }}>
-        <UserAvatar size={50}/>
+        <LogoutButton size={50}/>
         <div 
           className={`button-group${focusMode ? ' focusMode-active' : ''}`}
           style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem', position: 'relative' }}
@@ -201,7 +205,7 @@ export default function Home() {
         </div>
         {!focusMode && showGrid ? (
           <DocumentGrid onSelectNote={(note) => { 
-            recordActivity(); // Track activity when user selects a note from grid
+            if (user) recordActivity(user); // Track activity when user selects a note from grid
             setNoteState(note); 
             setShowGrid(false); 
           }} />
@@ -216,24 +220,41 @@ export default function Home() {
         )}
       </div>
       
-      {!focusMode && showTimer && (
-        <div style={{ 
-          flex: timerRunning ? 0 : 0, 
-          minWidth: timerRunning ? '200px' : '330px',
-          opacity: 1,
-          transform: 'translateX(0)',
-          transition: 'all 0.3s ease'
-        }}>
-          <Timer onStateChange={handleTimerStateChange} />
-        </div>
-      )}
+      <AnimatePresence>
+        {!focusMode && showTimer && (
+          <motion.div
+            key="timer"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ duration: 0.35, ease: 'easeInOut' }}
+            style={{
+              flex: timerRunning ? 0 : 0,
+              minWidth: timerRunning ? '200px' : '330px',
+              opacity: 1,
+              transform: 'translateX(0)',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <Timer onStateChange={handleTimerStateChange} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {!focusMode && showHeatmap && (
-        <div>
-          <CalendarHeatMap />
-          <ReactTooltip id="heatmap-tooltip" anchorSelect="rect[data-tooltip-id='heatmap-tooltip']" />
-        </div>
-      )}
+      <AnimatePresence>
+        {!focusMode && showHeatmap && (
+          <motion.div
+            key="heatmap"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ duration: 0.35, ease: 'easeInOut' }}
+          >
+            <CalendarHeatMap />
+            <ReactTooltip id="heatmap-tooltip" anchorSelect="rect[data-tooltip-id='heatmap-tooltip']" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* tool tips for the menu buttons */}
       <ReactTooltip id="focus-mode-tooltip" anchorSelect="[data-tooltip-id='focus-mode-tooltip']" />

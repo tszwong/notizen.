@@ -21,6 +21,7 @@
     "animejs": "^4.0.2",
     "firebase": "^11.10.0",
     "framer-motion": "^12.23.5",
+    "gsap": "^3.13.0",
     "html2pdf.js": "^0.10.3",
     "quill": "^2.0.3",
     "quill-better-table": "^1.2.10",

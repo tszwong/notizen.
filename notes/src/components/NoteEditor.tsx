@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import ReactQuill from "react-quill";
+import ReactQuill, { Quill } from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import html2pdf from 'html2pdf.js';
 import { createNote, updateNote, getNoteById, deleteNote } from '../utils/notesFirestore';
@@ -7,9 +7,15 @@ import { useAuth } from './auth/AuthProvider';
 import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
 import PauseIcon from '@mui/icons-material/Pause';
 import AddIcon from '@mui/icons-material/Add';
+import DownloadIcon from '@mui/icons-material/Download';
+import FileDownloadDoneIcon from '@mui/icons-material/FileDownloadDone';
+import DeleteIcon from '@mui/icons-material/Delete';
 import PressableButton from "./PressableButton";
 import { Tooltip as ReactTooltip } from 'react-tooltip';
 import { recordActivity } from '../utils/activityTracker';
+import ImageResize from 'quill-image-resize-module-react';
+
+Quill.register('modules/imageResize', ImageResize);
 
 interface NoteEditorProps {
   noteId: string | null;
@@ -25,9 +31,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
     const [saving, setSaving] = useState(false);
     const [timestamps, setTimestamps] = useState<{ createdAt?: any; updatedAt?: any }>({});
     const [listening, setListening] = useState(false);
+    const [downloadComplete, setDownloadComplete] = useState(false);
     const recognitionRef = useRef<any>(null);
     const lastSaved = useRef({ title: '', content: '' });
     const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+    const quillRef = useRef<any>(null);
+    const selectionRef = useRef<any>(null);
+    const lastChangeSourceRef = useRef<string | null>(null);
+    const [editorHeight, setEditorHeight] = useState<string | number>('auto');
 
     // Comprehensive toolbar configuration
     const modules = {
@@ -53,6 +64,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
         delay: 2000,
         maxStack: 500,
         userOnly: true
+    },
+    imageResize: {
+        parchment: Quill.import('parchment'),
+        modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]
     }
 };
 
@@ -69,18 +84,53 @@ const formats = [
 ];
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    recordActivity(); // Track activity when user edits title
     onNoteChange({ noteId, title: e.target.value, content });
+    if (user) setTimeout(() => { recordActivity(user); }, 0);
   };
-  const handleContentChange = (value: string) => {
-    recordActivity(); // Track activity when user edits content
+  // Preserve selection before value changes, but only if not user typing
+  const handleContentChange = async (value: string, delta: any, source: string, editor: any) => {
+    lastChangeSourceRef.current = source;
+    if (source !== 'user' && quillRef.current) {
+      const quillEditor = quillRef.current.getEditor();
+      selectionRef.current = quillEditor.getSelection();
+    } else {
+      selectionRef.current = null;
+    }
     onNoteChange({ noteId, title, content: value });
+    if (user) await recordActivity(user);
   };
+
+  // Restore selection after value changes, but only if not user typing
+  useEffect(() => {
+    if (
+      quillRef.current &&
+      selectionRef.current &&
+      lastChangeSourceRef.current !== 'user'
+    ) {
+      const editor = quillRef.current.getEditor();
+      if (document.activeElement === editor.root) {
+        editor.setSelection(selectionRef.current);
+      }
+    }
+  }, [content]);
+
+  // Responsive editor height using ResizeObserver
+  useEffect(() => {
+    if (!quillRef.current) return;
+    const editorElem = quillRef.current.getEditor().root;
+    const updateHeight = () => {
+      setEditorHeight(Math.max(editorElem.scrollHeight + 24, 120)); // 120px min height
+    };
+    updateHeight();
+    const resizeObserver = new window.ResizeObserver(updateHeight);
+    resizeObserver.observe(editorElem);
+    return () => resizeObserver.disconnect();
+  }, [content]);
 
   const handleDelete = async () => {
     if (!noteId) return;
     if (window.confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
-      recordActivity(); // Track activity when user deletes a note
+      if (user) await recordActivity(user); // Track activity when user deletes a note
       await deleteNote(noteId);
       onNoteChange({ noteId: null, title: '', content: '' });
     }
@@ -147,9 +197,9 @@ const formats = [
     recognitionRef.current.onerror = () => setListening(false);
   }, []);
 
-  const handleSpeech = () => {
+  const handleSpeech = async () => {
     if (!recognitionRef.current) return;
-    recordActivity(); // Track activity when user uses speech-to-text
+    if (user) await recordActivity(user); // Track activity when user uses speech-to-text
     if (listening) {
       recognitionRef.current.stop();
       setListening(false);
@@ -164,82 +214,136 @@ const formats = [
   const downloadPDF = () => {
     const editor = document.querySelector('.ql-editor');
     if (editor) {
-      html2pdf().from(editor).save('notes.pdf');
+      setDownloadComplete(true);
+      const safeTitle = title.trim() ? title.trim().replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') : 'notes';
+      html2pdf().from(editor).save(`${safeTitle}.pdf`);
+      setTimeout(() => setDownloadComplete(false), 5000);
     }
   };
 
   return (
     <div className={`note-editor-container ${className}`}>
       <div className="note-editor-card" style={{ position: 'relative', overflow: 'hidden', padding: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
-          <input
-            value={title}
-            onChange={handleTitleChange}
-            placeholder="Title"
-            style={{
-              width: '100%',
-              fontSize: '1.5rem',
-              fontWeight: 600,
-              marginBottom: 0,
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              color: '#232323',
-            }}
-          />
-          <PressableButton
-            onClick={handleSpeech}
-            className="nbg-button-corner-anim"
-            aria-label={listening ? 'Stop Listening' : 'Start Speech to Text'}
-            data-tooltip-id="recording-tooltip"
-            data-tooltip-content={listening ? 'Stop Listening' : 'Start Speech to Text'}
-            style={{
-              background: listening ? 'rgb(255,139,125)' : 'rgba(255,255,255,0.7)',
-              color: listening ? 'white' : '#7A6C4D',
-              fontWeight: 700,
-              marginLeft: '0.5rem',
-              minWidth: 48,
-              minHeight: 48,
-              borderRadius: '50%',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.3rem',
-              // boxShadow: listening ? '0 0 0 2px #4ECDC4' : 'none',
-              border: 'none',
-            }}
-          >
-            <span className="nbg-corner-anim-span"></span>
-            <span className="nbg-button-content">{listening ? <PauseIcon /> : <RecordVoiceOverIcon />}</span>
-          </PressableButton>
-          <PressableButton
-            onClick={onNewNote}
-            className="nbg-button-corner-anim"
-            aria-label="New Note"
-            data-tooltip-id="new-note-tooltip"
-            data-tooltip-content="New Note"
-            style={{
-              background: 'rgba(255,255,255,0.7)',
-              color: '#7A6C4D',
-              fontWeight: 700,
-              minWidth: 48,
-              minHeight: 48,
-              borderRadius: '50%',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.3rem',
-              boxShadow: 'none',
-              border: 'none',
-            }}
-          >
-            <span className="nbg-corner-anim-span"></span>
-            <span className="nbg-button-content"><AddIcon /></span>
-          </PressableButton>
+        <div className="note-editor-toolbar-sticky">
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
+            <input
+              value={title}
+              onChange={handleTitleChange}
+              placeholder="Title"
+              style={{
+                width: '100%',
+                fontSize: '1.5rem',
+                fontWeight: 600,
+                marginBottom: 0,
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                color: '#232323',
+              }}
+            />
+            <PressableButton
+              onClick={handleSpeech}
+              className="nbg-button-corner-anim"
+              aria-label={listening ? 'Stop Listening' : 'Start Speech to Text'}
+              data-tooltip-id="recording-tooltip"
+              data-tooltip-content={listening ? 'Stop Listening' : 'Start Speech to Text'}
+              style={{
+                background: listening ? 'rgb(255,139,125)' : 'rgba(255,255,255,0.7)',
+                color: listening ? 'white' : '#7A6C4D',
+                fontWeight: 700,
+                marginLeft: '0.5rem',
+                minWidth: 48,
+                minHeight: 48,
+                borderRadius: '50%',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem',
+                border: 'none',
+              }}
+            >
+              <span className="nbg-corner-anim-span"></span>
+              <span className="nbg-button-content">{listening ? <PauseIcon /> : <RecordVoiceOverIcon />}</span>
+            </PressableButton>
+            <PressableButton
+              onClick={onNewNote}
+              className="nbg-button-corner-anim"
+              aria-label="New Note"
+              data-tooltip-id="new-note-tooltip"
+              data-tooltip-content="New Note"
+              style={{
+                background: 'rgba(255,255,255,0.7)',
+                color: '#7A6C4D',
+                fontWeight: 700,
+                minWidth: 48,
+                minHeight: 48,
+                borderRadius: '50%',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem',
+                border: 'none',
+              }}
+            >
+              <span className="nbg-corner-anim-span"></span>
+              <span className="nbg-button-content"><AddIcon /></span>
+            </PressableButton>
+            <PressableButton
+              onClick={downloadPDF}
+              className="nbg-button-corner-anim"
+              aria-label="Download PDF"
+              data-tooltip-id="download-pdf-tooltip"
+              data-tooltip-content="Download PDF"
+              style={{
+                background: 'rgba(255,255,255,0.7)',
+                color: '#7A6C4D',
+                fontWeight: 700,
+                minWidth: 48,
+                minHeight: 48,
+                borderRadius: '50%',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem',
+                border: 'none',
+              }}
+            >
+              <span className="nbg-corner-anim-span"></span>
+              <span className="nbg-button-content">{downloadComplete ? <FileDownloadDoneIcon /> : <DownloadIcon />}</span>
+            </PressableButton>
+            {noteId && (
+              <PressableButton
+                onClick={handleDelete}
+                className="nbg-button-corner-anim"
+                aria-label="Delete Note"
+                data-tooltip-id="delete-note-tooltip"
+                data-tooltip-content="Delete Note"
+                style={{
+                  background: 'rgba(255,255,255,0.7)',
+                  color: '#e57373',
+                  fontWeight: 700,
+                  minWidth: 48,
+                  minHeight: 48,
+                  borderRadius: '50%',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.3rem',
+                  border: 'none',
+                }}
+              >
+                <span className="nbg-corner-anim-span"></span>
+                <span className="nbg-button-content"><DeleteIcon /></span>
+              </PressableButton>
+            )}
+          </div>
         </div>
         <ReactQuill
+          ref={quillRef}
           theme="snow"
           value={content}
           onChange={handleContentChange}
@@ -247,10 +351,13 @@ const formats = [
           formats={formats}
           placeholder="Start typing your notes..."
           style={{ 
-            height: '50vh',
+            minHeight: 120,
+            height: editorHeight,
+            maxHeight: 800,
             background: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '12px',
-            overflow: 'hidden'
+            // border: 'none',
+            // borderBottom: '1px',
+            overflow: 'auto'
           }}
         />
         <div style={{ marginTop: '0.5rem', color: saving ? '#888' : '#4ECDC4', fontWeight: 500 }}>
@@ -265,18 +372,11 @@ const formats = [
           )}
         </div>
       </div>
-      <button onClick={downloadPDF} className="button" 
-          style={{ marginTop: '1rem', marginRight: '1rem' }}>
-              Download PDF
-      </button>
-      {noteId && (
-        <button onClick={handleDelete} className="button" style={{ marginTop: '1rem', background: '#e57373', color: 'white' }}>
-          Delete Note
-        </button>
-      )}
-      
+
       <ReactTooltip id="recording-tooltip" anchorSelect="[data-tooltip-id='recording-tooltip']" />
       <ReactTooltip id="new-note-tooltip" anchorSelect="[data-tooltip-id='new-note-tooltip']" />
+      <ReactTooltip id="download-pdf-tooltip" anchorSelect="[data-tooltip-id='download-pdf-tooltip']" />
+      <ReactTooltip id="delete-note-tooltip" anchorSelect="[data-tooltip-id='delete-note-tooltip']" />
     </div>
   );
 };

@@ -67,10 +67,10 @@ input, select, textarea {
 
 /* Quill Editor Theming */
 .note-editor-card .ql-toolbar {
-  background: var(--color-surface) !important;
-  border: none !important;
-  border-radius: 8px 8px 0 0 !important;
-  border-bottom: 1.5px solid var(--color-border) !important;
+  position: sticky;
+  top: 0px; /* Adjust if your custom toolbar is taller/shorter */
+  z-index: 11;
+  background: rgba(255,255,255,0.97);
 }
 
 .note-editor-card .ql-container {
@@ -377,4 +377,12 @@ input, select, textarea {
   top: 3px;
   box-shadow: 0 2px 0px rgb(248,88,65);
   transition: all .2s;
+}
+
+.note-editor-toolbar-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255,255,255,0.97);
+  padding-bottom: 0.5rem;
 }
