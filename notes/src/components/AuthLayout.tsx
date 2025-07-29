@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 
 // Update the path if your image is named differently or in a different folder
+// @ts-ignore
 import noteEditor3D from '../assets/note-editor-3d.png';
 
 interface AuthLayoutProps {

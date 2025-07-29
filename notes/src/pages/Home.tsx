@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import NoteEditor from "../components/NoteEditor";
 import Timer from "../components/Timer";
-import DocumentGrid from "../components/DocumentsGrid";
+import DocumentsGrid from "../components/DocumentsGrid";
 import CalendarHeatMap from "../components/CalendarHeatMap";
 import LogoutButton from "../components/LogoutButton";
 import PressableButton from '../components/PressableButton';
@@ -11,6 +11,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PlayLessonIcon from '@mui/icons-material/PlayLesson';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
 import { Tooltip as ReactTooltip } from 'react-tooltip';
 import { useAuth } from '../components/auth/AuthProvider';
@@ -105,7 +106,7 @@ export default function Home() {
             data-tooltip-id="focus-mode-tooltip"
             data-tooltip-content={focusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
             style={{
-              background: focusMode ? '#232323' : 'rgb(255,139,125)',
+              background: focusMode ? '#b0c4b1' : '#606c38',
               padding: '0.75rem',
               color: 'white',
               cursor: 'pointer',
@@ -204,7 +205,7 @@ export default function Home() {
           </PressableButton>
         </div>
         {!focusMode && showGrid ? (
-          <DocumentGrid onSelectNote={(note) => { 
+          <DocumentsGrid onSelectNote={(note) => { 
             if (user) recordActivity(user); // Track activity when user selects a note from grid
             setNoteState(note); 
             setShowGrid(false); 

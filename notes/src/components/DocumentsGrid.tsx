@@ -6,6 +6,7 @@ import type { Note } from '../utils/notesFirestore';
 import { useAuth } from './auth/AuthProvider';
 import Skeleton from '@mui/material/Skeleton';
 import Box from '@mui/material/Box';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const columns: GridColDef[] = [
   { field: 'title', headerName: 'Title', width: 200 },
@@ -37,9 +38,10 @@ const columns: GridColDef[] = [
 
 interface DocumentsGridProps {
   onSelectNote: (note: { noteId: string; title: string; content: string }) => void;
+  height?: string | number;
 }
 
-export default function DocumentsGrid({ onSelectNote }: DocumentsGridProps) {
+export default function DocumentsGrid({ onSelectNote, height }: DocumentsGridProps) {
   const { user } = useAuth();
   const [rows, setRows] = useState<Note[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export default function DocumentsGrid({ onSelectNote }: DocumentsGridProps) {
     if (!user) return;
     setLoading(true);
     getUserNotes(user.uid)
-      .then(notes => setRows(notes))
+      .then(notes => setRows(addDefaultTitles(notes))) // Apply default titles
       .finally(() => setLoading(false));
   };
 
@@ -78,8 +80,15 @@ export default function DocumentsGrid({ onSelectNote }: DocumentsGridProps) {
     }
   };
 
+  const addDefaultTitles = (notes: Note[]) => {
+    return notes.map(note => ({
+      ...note,
+      title: note.title?.trim() || 'Untitled Note', // Assign "Untitled Note" if the title is empty or null
+    }));
+  };
+
   return (
-    <div className="note-editor-card" style={{ height: '900px', padding: '2rem' }}>
+    <div className="note-editor-card" style={{ height: height ?? '900px', padding: '2rem' }}>
       <div style={{ transition: 'opacity 0.3s', opacity: showSkeleton ? 1 : 0, position: showSkeleton ? 'static' : 'absolute', width: '100%' }}>
         {showSkeleton && (
           <Box sx={{ width: '100%' }}>
@@ -100,15 +109,37 @@ export default function DocumentsGrid({ onSelectNote }: DocumentsGridProps) {
                 headerName: 'Actions',
                 width: 120,
                 renderCell: (params) => (
-                  <button
-                    style={{ background: '#e57373', color: 'white', border: 'none', borderRadius: 8, padding: '0.5rem 1rem', cursor: 'pointer' }}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      await handleDelete(params.row.id);
+                  <div
+                    style={{
+                      display: 'flex',
+                      // justifyContent: 'center',
+                      alignItems: 'center',
+                      width: '100%',
+                      height: '100%',
                     }}
                   >
-                    Delete
-                  </button>
+                    <button
+                      style={{
+                        background: '#e57373',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        padding: 0,
+                        cursor: 'pointer',
+                        width: '40px',
+                        height: '40px',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await handleDelete(params.row.id);
+                      }}
+                    >
+                      <DeleteIcon style={{ fontSize: '20px' }} />
+                    </button>
+                  </div>
                 ),
               },
             ]}
