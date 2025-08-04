@@ -105,6 +105,8 @@ input, select, textarea {
   top: 0px; /* Adjust if your custom toolbar is taller/shorter */
   z-index: 11;
   background: rgba(255,255,255,0.97);
+  border-radius: 20px;
+  margin-bottom: 1rem;
 }
 
 .note-editor-card .ql-container {
@@ -229,7 +231,7 @@ input, select, textarea {
   position: relative;
   border: none;
   color: var(--color-accent);
-  background: rgba(255,255,255,0.7);
+  /* background: rgba(255,255,255,0.7); */
   transition: color 0.3s, font-size 0.3s;
   overflow: visible;
 }
@@ -322,7 +324,7 @@ input, select, textarea {
   position: relative;
   border: none;
   color: var(--color-accent);
-  background: rgba(255,255,255,0.7);
+  /* background: rgba(255,255,255,0.7); */
   transition: color 0.3s, font-size 0.3s;
   overflow: visible;
 }

@@ -4,7 +4,7 @@ import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
-console.log("GOOGLE_STUDIO_API_KEY:", process.env.GOOGLE_STUDIO_API_KEY);
+// console.log("GOOGLE_STUDIO_API_KEY:", process.env.GOOGLE_STUDIO_API_KEY);
 
 const app = express();
 app.use(cors());
@@ -53,6 +53,7 @@ app.post("/api/summarize", async (req, res) => {
         - Do not use any rich text formatting (e.g., no bold, italics, or markdown symbols).
         - Always start the answer with a new line <br>, then "Summary: <br>" followed by the summary.
         - Make sure when we end the summary, it ends with a new line <br> and exit out of any lists <ul> or <li> or <ol>.
+        - Do not end summary with a list item or bullet point.
 
         Content to summarize: ${truncatedContent}`;
 

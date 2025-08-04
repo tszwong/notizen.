@@ -29,9 +29,10 @@ interface NoteEditorProps {
   onNoteChange: (note: { noteId: string | null; title: string; content: string }) => void;
   onNewNote: () => void;
   className?: string;
+  focusMode?: boolean; // <-- Add this line
 }
 
-const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteChange, onNewNote, className = '' }) => {
+const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteChange, onNewNote, className = '', focusMode = false }) => {
     const { user } = useAuth();
     const [saving, setSaving] = useState(false);
     const [timestamps, setTimestamps] = useState<{ createdAt?: any; updatedAt?: any }>({});
@@ -41,6 +42,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
     const [showCheckIcon, setShowCheckIcon] = useState(false);
     const [selectedText, setSelectedText] = useState('');
     const [buttonPosition, setButtonPosition] = useState<{ x: number; y: number } | null>(null);
+    const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
     const recognitionRef = useRef<any>(null);
     const lastSaved = useRef({ title: '', content: '' });
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,10 +70,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
 
     clipboard: {
         matchVisual: false,
-    },
+    }, 
     history: {
-        delay: 2000,
-        maxStack: 500,
+        delay: 1000,
+        maxStack: 2000,
         userOnly: true
     },
     imageResize: {
@@ -142,6 +144,10 @@ const handleDelete = async () => {
     if (user) await recordActivity(user); // Track activity when user deletes a note
     await deleteNote(noteId);
     onNoteChange({ noteId: null, title: '', content: '' });
+    setShowDeleteOverlay(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200); // Duration matches the animation
   }
 };
 
@@ -220,15 +226,15 @@ const handleSpeech = async () => {
   }
 };
 
-const downloadPDF = () => {
-  const editor = document.querySelector('.ql-editor');
-  if (editor) {
-    setDownloadComplete(true);
-    const safeTitle = title.trim() ? title.trim().replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') : 'notes';
-    html2pdf().from(editor).save(`${safeTitle}.pdf`);
-    setTimeout(() => setDownloadComplete(false), 5000);
-  }
-};
+// const downloadPDF = () => {
+//   const editor = document.querySelector('.ql-editor');
+//   if (editor) {
+//     setDownloadComplete(true);
+//     const safeTitle = title.trim() ? title.trim().replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') : 'notes';
+//     html2pdf().from(editor).save(`${safeTitle}.pdf`);
+//     setTimeout(() => setDownloadComplete(false), 5000);
+//   }
+// };
 
 // AI Summary function
 // Updated summarizeWithAI function with correct backend URL
@@ -343,11 +349,94 @@ useEffect(() => {
   };
 }, []);
 
+  // Editor height logic
+  const computedEditorHeight = focusMode ? '58vh' : '100vh';
+  const editorStyle = {
+    minHeight: computedEditorHeight,
+    maxHeight: computedEditorHeight,
+    background: 'rgba(255, 255, 255, 0.95)',
+    overflow: 'auto',
+  };
+
 return (
   <div className={`note-editor-container ${className}`}>
-    <div className="note-editor-card" style={{ position: 'relative', overflow: 'hidden', padding: '2rem' }}>
-      <div className="note-editor-toolbar-sticky">
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
+    {/* Green transition overlay with sliding "Deleting..." text */}
+    {showDeleteOverlay && (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '0%',
+          height: '100vh',
+          background: '#f28482',
+          zIndex: 99999,
+          animation: 'greenTransition 1.2s forwards',
+          overflow: 'visible',
+        }}
+      >
+        {/* Sliding "Deleting..." text with increasing letter spacing */}
+        <span
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '100%',
+            transform: 'translate(-100%, -50%)',
+            fontWeight: 'bold',
+            color: '#fff',
+            fontSize: '2rem',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            animation: 'slideDeletingText 1.2s forwards',
+            zIndex: 100000,
+            textShadow: '0 2px 8px #355c3c',
+            letterSpacing: '0.1em', // initial value, will be animated
+          }}
+          className="deleting-text-anim"
+        >
+          deleting...
+        </span>
+      </div>
+    )}
+    {/* Add keyframes for the animation */}
+    <style>
+      {`
+        @keyframes greenTransition {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        @keyframes slideDeletingText {
+          from { left: 0%; opacity: 0.2; letter-spacing: 0.1em; }
+          to { left: 80%; opacity: 1; letter-spacing: 1.5em; }
+        }
+        .deleting-text-anim {
+          animation: slideDeletingText 1.2s forwards;
+        }
+      `}
+    </style>
+    <div
+      className="note-editor-card"
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        padding: '2rem',
+        borderRadius: '40px', // <-- Add rounded corners to editor card
+        borderColor: '#a3b18a',
+        boxShadow: '0 4px 24px rgba(60,9,108,0.08)', // optional subtle shadow
+        background: 'rgba(255,255,255,0.95)',
+      }}
+    >
+      <div
+        className="note-editor-toolbar-sticky"
+        style={{
+          borderRadius: '14px', // <-- Add rounded corners to toolbar
+          background: 'rgba(245,245,255,0.85)', // optional subtle background
+          padding: '0.5rem 1rem',
+          marginBottom: '1rem',
+          boxShadow: '0 2px 8px rgba(60,9,108,0.04)', // optional subtle shadow
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0rem', gap: '1rem' }}>
           <input
             value={title}
             onChange={handleTitleChange}
@@ -371,7 +460,7 @@ return (
             data-tooltip-id="recording-tooltip"
             data-tooltip-content={listening ? 'Stop Listening' : 'Start Speech to Text'}
             style={{
-              background: listening ? 'rgb(255,139,125)' : 'rgba(255,255,255,0.7)',
+              background: listening ? 'rgb(255,139,125)' : 'none',
               color: listening ? 'white' : '#7A6C4D',
               fontWeight: 700,
               marginLeft: '0.5rem',
@@ -397,7 +486,7 @@ return (
             data-tooltip-id="ai-summary-tooltip"
             data-tooltip-content={summarizing ? 'Summarizing Content...' : 'Summarize with AI'}
             style={{
-              background: 'rgba(255,255,255,0.7)',
+              // background: 'rgba(255,255,255,0.7)',
               color: '#7A6C4D',
               fontWeight: 700,
               minWidth: 48,
@@ -446,7 +535,7 @@ return (
             <span className="nbg-button-content"><AddIcon /></span>
           </PressableButton>
           
-          <PressableButton
+          {/* <PressableButton
             onClick={downloadPDF}
             className="nbg-button-corner-anim"
             aria-label="Download PDF"
@@ -469,7 +558,7 @@ return (
           >
             <span className="nbg-corner-anim-span"></span>
             <span className="nbg-button-content">{downloadComplete ? <FileDownloadDoneIcon /> : <DownloadIcon />}</span>
-          </PressableButton>
+          </PressableButton> */}
           
           {noteId && (
             <PressableButton
@@ -507,15 +596,7 @@ return (
         modules={modules}
         formats={formats}
         placeholder="Start typing your notes..."
-        style={{ 
-          minHeight: 120,
-          height: editorHeight,
-          maxHeight: 800,
-          background: 'rgba(255, 255, 255, 0.95)',
-          // border: 'none',
-          // borderBottom: '1px',
-          overflow: 'auto'
-        }}
+        style={editorStyle}
       />
     </div>
 
@@ -572,6 +653,126 @@ return (
       <ReactTooltip 
         id="summarize-selected-tooltip" anchorSelect="[data-tooltip-id='summarize-selected-tooltip']" 
         style={{ zIndex: 9999 }}
+      />
+      <ReactTooltip
+        anchorSelect=".ql-bold"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Bold"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-italic"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Italic"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-underline"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Underline"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-strike"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Strikethrough"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-header"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Header"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-list[value='ordered']"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Ordered List"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-list[value='bullet']"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Bullet List"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-link"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Insert Link"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-image"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Insert Image"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-video"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Insert Video"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-code-block"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Code Block"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-blockquote"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Blockquote"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-clean"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Remove Formatting"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-font"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Font"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-size"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Font Size"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-color"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Font Color"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-background"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Highlight"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-indent[value='-1']"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Indent Left"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-indent[value='+1']"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Indent Right"
+      />
+      <ReactTooltip
+        anchorSelect=".ql-align"
+        place="bottom"
+        style={{ fontSize: '0.85rem', padding: '0.3em 0.7em', zIndex: 9999 }}
+        content="Align"
       />
     </div>
   );

@@ -5,18 +5,21 @@ import DocumentsGrid from "../components/DocumentsGrid";
 import CalendarHeatMap from "../components/CalendarHeatMap";
 import LogoutButton from "../components/LogoutButton";
 import PressableButton from '../components/PressableButton';
+import TimeDisplay from '../components/TimeDisplay';
 
 import AccessAlarmIcon from '@mui/icons-material/AccessAlarm';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PlayLessonIcon from '@mui/icons-material/PlayLesson';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+// import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
 import { Tooltip as ReactTooltip } from 'react-tooltip';
 import { useAuth } from '../components/auth/AuthProvider';
 import { recordActivity } from '../utils/activityTracker';
 import { motion, AnimatePresence } from 'framer-motion';
+
+import { getNoteById } from '../utils/notesFirestore';
 
 export default function Home() {
   const { user } = useAuth();
@@ -47,18 +50,77 @@ export default function Home() {
     content: '',
   });
 
+  const [showCreateOverlay, setShowCreateOverlay] = useState(false);
+
+  // Load last noteId from localStorage on mount
+  useEffect(() => {
+    const savedNoteId = localStorage.getItem('lastNoteId');
+    if (savedNoteId) {
+      // Fetch the note data from Firestore
+      getNoteById(savedNoteId).then(note => {
+        if (note) {
+          setNoteState({
+            noteId: note.id || savedNoteId,
+            title: note.title || '',
+            content: note.content || '',
+          });
+        }
+      });
+    }
+  }, []);
+
+  // Save noteId to localStorage whenever it changes
+  useEffect(() => {
+    if (noteState.noteId) {
+      localStorage.setItem('lastNoteId', noteState.noteId);
+    }
+  }, [noteState.noteId]);
+
   // Handler for creating a new note
   const handleNewNote = async () => {
-    // Only save if there is content or title
     if ((noteState.title.trim() || noteState.content.trim()) && noteState.noteId) {
-      // Save the current note (autosave will handle it, but force update to be sure)
-      // Optionally, you could call updateNote here directly, but autosave should handle it
-      setNoteState({ ...noteState }); // trigger autosave effect
-      await new Promise(resolve => setTimeout(resolve, 200)); // give autosave a moment
+      setNoteState({ ...noteState });
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
-    if (user) await recordActivity(user); // Track activity when user creates a new note
-    setNoteState({ noteId: null, title: '', content: '' });
+    if (user) await recordActivity(user);
+    localStorage.removeItem('lastNoteId'); // Clear last noteId on new note
+    setShowCreateOverlay(true); // Show transition overlay
+    setTimeout(() => {
+      window.location.reload(); // Refresh the screen, do NOT clear editor contents
+    }, 1200); // Duration matches animation
   };
+
+  // Handler for deleting a note (pass to NoteEditor)
+  const handleNoteChange = (note: { noteId: string | null; title: string; content: string }) => {
+    setNoteState(note);
+    if (!note.noteId) {
+      localStorage.removeItem('lastNoteId'); // Clear last noteId on delete
+    }
+  };
+
+
+  useEffect(() => {
+    if (noteState.noteId) {
+      console.log("Current noteId:", noteState.noteId);
+    }
+  }, [noteState.noteId]);
+
+  useEffect(() => {
+  const savedNoteId = localStorage.getItem('lastNoteId');
+  if (savedNoteId) {
+    // Fetch the note data from Firestore
+    getNoteById(savedNoteId).then(note => {
+      if (note) {
+        setNoteState({
+          noteId: note.id || savedNoteId,
+          title: note.title || '',
+          content: note.content || '',
+        });
+      }
+    });
+  }
+}, []);
+
 
   // Determine if editor should be expanded
   const isEditorExpanded = focusMode || !showTimer || timerRunning;
@@ -76,14 +138,70 @@ export default function Home() {
   return (
     <div
       ref={appRef}
-      style={{ 
-        display: 'flex', 
-        gap: '2rem', 
-        padding: '2rem', 
-        maxWidth: isEditorExpanded ? '1200px' : '1200px', 
+      style={{
+        display: 'flex',
+        gap: '2rem',
+        padding: '2rem',
+        maxWidth: isEditorExpanded ? '1200px' : '1200px',
         margin: '0 auto',
         transition: 'max-width 0.3s ease'
       }}>
+      {/* Creating new note transition overlay */}
+      {showCreateOverlay && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '0%',
+            height: '100vh',
+            background: '#b5e48c',
+            zIndex: 99999,
+            animation: 'createTransition 1.2s forwards',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            overflow: 'visible',
+          }}
+        >
+          <span
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '100%',
+              transform: 'translate(-100%, -50%)',
+              fontWeight: 'bold',
+              color: '#fff',
+              fontSize: '2rem',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              animation: 'slideCreateText 1.2s forwards',
+              zIndex: 100000,
+              // textShadow: '0 2px 8px #355c3c',
+              letterSpacing: '0.1em',
+            }}
+            className="creating-text-anim"
+          >
+            creating new note...
+          </span>
+        </div>
+      )}
+      <style>
+        {`
+          @keyframes createTransition {
+            from { width: 0%; }
+            to { width: 100%; }
+          }
+          @keyframes slideCreateText {
+            from { left: 0%; opacity: 0.2; letter-spacing: 0.1em; }
+            to { left: 80%; opacity: 1; letter-spacing: 0.8em; }
+          }
+          .creating-text-anim {
+            animation: slideCreateText 1.2s forwards;
+          }
+        `}
+      </style>
       <div style={{ 
         flex: isEditorExpanded ? 1 : 1,
         display: 'flex',
@@ -94,129 +212,145 @@ export default function Home() {
         height: isEditorExpanded ? '1000px' : '950px',
         transition: 'max-width 0.5s ease'
       }}>
-        <LogoutButton size={50}/>
-        <div 
-          className={`button-group${focusMode ? ' focusMode-active' : ''}`}
-          style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem', position: 'relative' }}
-        >
-          <PressableButton
-            onClick={() => setfocusMode((prev) => !prev)}
-            className="key-effect focus-mode-btn button-corner-anim"
-            aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
-            data-tooltip-id="focus-mode-tooltip"
-            data-tooltip-content={focusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
-            style={{
-              background: focusMode ? '#b0c4b1' : '#606c38',
-              padding: '0.75rem',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '1.2rem',
-              fontWeight: '500',
-              transition: 'all 0.3s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '35px',
-              marginRight: '1rem',
-              zIndex: 2
-            }}
+        {/* Profile + Button group in one row */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          marginBottom: '1.5rem',
+          marginTop: '1rem',
+          gap: '1.5rem',
+          position: 'relative',
+          justifyContent: 'space-between', // <-- Add this line
+        }}>
+          <LogoutButton size={50}/>
+          <div 
+            className={`button-group${focusMode ? ' focusMode-active' : ''}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
           >
-            <span className="corner-anim-span"></span>
-            <span className="button-content">{focusMode ? "⏹" : <PlayLessonIcon />}</span>
-          </PressableButton>
+            <TimeDisplay />
+            <PressableButton
+              onClick={() => setfocusMode((prev) => !prev)}
+              className="key-effect focus-mode-btn button-corner-anim"
+              aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+              data-tooltip-id="focus-mode-tooltip"
+              data-tooltip-content={focusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
+              style={{
+                background: focusMode ? '#b0c4b1' : '#606c38',
+                padding: '0.75rem',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                fontWeight: '500',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '35px',
+                marginRight: '1rem',
+                zIndex: 2
+              }}
+            >
+              <span className="corner-anim-span"></span>
+              <span className="button-content">{focusMode ? "⏹" : <PlayLessonIcon />}</span>
+            </PressableButton>
 
-          <PressableButton
-            onClick={() => setShowGrid((prev) => !prev)}
-            className="key-effect hide-when-focus button-corner-anim"
-            aria-label="Documents"
-            data-tooltip-id="document-grid-tooltip"
-            data-tooltip-content="Documents"
-            style={{
-              padding: '0.75rem',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '1.2rem',
-              fontWeight: '500',
-              transition: 'all 0.3s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '35px',
-              marginRight: '1rem',
-              zIndex: 2
-            }}
-          >
-            <span className="corner-anim-span"></span>
-            <span className="button-content">{showGrid ? <ExpandLessIcon /> : <ExpandMoreIcon />}</span>
-          </PressableButton>
+            <PressableButton
+              onClick={() => setShowGrid((prev) => !prev)}
+              className="key-effect hide-when-focus button-corner-anim"
+              aria-label="Documents"
+              data-tooltip-id="document-grid-tooltip"
+              data-tooltip-content="Documents"
+              style={{
+                padding: '0.75rem',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                fontWeight: '500',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '35px',
+                marginRight: '1rem',
+                zIndex: 2
+              }}
+            >
+              <span className="corner-anim-span"></span>
+              <span className="button-content">{showGrid ? <ExpandLessIcon /> : <ExpandMoreIcon />}</span>
+            </PressableButton>
 
-          <PressableButton
-            onClick={toggleTimer}
-            className="key-effect hide-when-focus button-corner-anim"
-            aria-label="Pomodoro Timer"
-            data-tooltip-id="timer-tooltip"
-            data-tooltip-content="Pomodoro Timer"
-            style={{
-              padding: '0.75rem',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '1.2rem',
-              fontWeight: '500',
-              transition: 'all 0.3s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '35px',
-              marginRight: '1rem',
-              zIndex: 2
-            }}
-          >
-            <span className="corner-anim-span"></span>
-            <span className="button-content"><AccessAlarmIcon /></span>
-          </PressableButton>
+            <PressableButton
+              onClick={toggleTimer}
+              className="key-effect hide-when-focus button-corner-anim"
+              aria-label="Pomodoro Timer"
+              data-tooltip-id="timer-tooltip"
+              data-tooltip-content="Pomodoro Timer"
+              style={{
+                padding: '0.75rem',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                fontWeight: '500',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '35px',
+                marginRight: '1rem',
+                zIndex: 2
+              }}
+            >
+              <span className="corner-anim-span"></span>
+              <span className="button-content"><AccessAlarmIcon /></span>
+            </PressableButton>
 
-          <PressableButton
-            onClick={toggleHeatmap}
-            className="key-effect hide-when-focus button-corner-anim"
-            aria-label="Activity Tracker"
-            data-tooltip-id="activity-tracker-tooltip"
-            data-tooltip-content="Activity Tracker"
-            style={{
-              padding: '0.75rem',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '1.2rem',
-              fontWeight: '500',
-              transition: 'all 0.3s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '35px',
-              marginRight: '1rem',
-              zIndex: 2
-            }}
-          >
-            <span className="corner-anim-span"></span>
-            <span className="button-content"><CalendarTodayIcon /></span>
-          </PressableButton>
+            <PressableButton
+              onClick={toggleHeatmap}
+              className="key-effect hide-when-focus button-corner-anim"
+              aria-label="Activity Tracker"
+              data-tooltip-id="activity-tracker-tooltip"
+              data-tooltip-content="Activity Tracker"
+              style={{
+                padding: '0.75rem',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                fontWeight: '500',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '35px',
+                marginRight: '1rem',
+                zIndex: 2
+              }}
+            >
+              <span className="corner-anim-span"></span>
+              <span className="button-content"><CalendarTodayIcon /></span>
+            </PressableButton>
+          </div>
         </div>
         {!focusMode && showGrid ? (
           <DocumentsGrid onSelectNote={(note) => { 
             if (user) recordActivity(user); // Track activity when user selects a note from grid
             setNoteState(note); 
             setShowGrid(false); 
+            if (note.noteId) {
+              console.log("Opened note from grid, noteId:", note.noteId);
+            }
           }} />
         ) : (
           <NoteEditor
             noteId={noteState.noteId}
             title={noteState.title}
             content={noteState.content}
-            onNoteChange={setNoteState}
+            onNoteChange={handleNoteChange}
             onNewNote={handleNewNote}
+            focusMode={focusMode}
           />
         )}
       </div>
