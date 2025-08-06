@@ -55,7 +55,7 @@ body {
 .card, .note-editor-card {
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 35px;
   padding: 2rem;
   box-shadow: none;
 }
@@ -63,9 +63,10 @@ body {
 .timer-card {
   background: var(--color-timer) !important;
   border: 1.5px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 24px;
   color: var(--color-text);
   box-shadow: none;
+  margin-top: 6.5rem;
 }
 
 h1, h2, h3, h4 {

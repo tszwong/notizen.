@@ -30,17 +30,21 @@ export default function RegisterPage() {
 
     return (
         <AuthLayout>
-            <h1 style={{
-                fontFamily: 'IBM Plex Mono, Share Tech Mono, VT323, monospace',
-                fontSize: '2.2rem',
-                color: '#7A6C4D',
-                marginBottom: '2rem',
-                letterSpacing: '2px',
-                textAlign: 'center',
-                textShadow: '0 2px 0 #e0d8c3, 0 4px 8px #b7b1a3',
-            }}>
-                Create Account <span style={{color:'#232323'}}>✦</span>
-            </h1>
+            <span
+                style={{
+                fontFamily: "'Nunito Sans', sans-serif",
+                fontWeight: 700,
+                fontStyle: 'italic',
+                fontSize: '2.5rem',
+                color: '#000',
+                letterSpacing: '0.03em',
+                marginLeft: '2.5rem',
+                marginRight: '2.5rem',
+                userSelect: 'none',
+                }}
+            >
+                Create Account
+            </span>
             <RegisterFormComponent />
         </AuthLayout>
     );

@@ -3,6 +3,8 @@ import React, { useRef, useState } from 'react';
 // Update the path if your image is named differently or in a different folder
 // @ts-ignore
 import noteEditor3D from '../assets/note-editor-3d.png';
+// @ts-ignore
+import noteEditor3DBlack from '../assets/note-editor-3d-black.png';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -10,6 +12,9 @@ interface AuthLayoutProps {
 
 const retroFont = {
   fontFamily: `'IBM Plex Mono', 'Share Tech Mono', 'VT323', monospace`,
+};
+const cleanFont = {
+  fontFamily: "'Nunito Sans', sans-serif",
 };
 
 const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
@@ -41,7 +46,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
         minHeight: '100vh',
         height: '100vh',
         width: '100vw',
-        background: 'linear-gradient(120deg, #f4f1eb 0%, #e0d8c3 100%)',
+        backgroundImage: "linear-gradient(to right bottom, #fefae0, #fdf8dc, #fcf5d9, #fcf3d5, #fbf0d2, #faebc7, #f9e7bc, #f8e2b1, #f7d99c, #f6d088, #f6c774, #f6bd60)",
         ...retroFont,
         overflow: 'hidden',
       }}
@@ -49,14 +54,12 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       {/* Left Side: Animated Image */}
       <div
         style={{
-          flex: '0 0 60%',
+          flex: '0 0 55%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           height: '100vh',
           minHeight: '100vh',
-          // background intentionally left blank for user customization
-          borderRight: '4px solid #7A6C4D',
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -66,25 +69,23 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           style={{
-            width: 1040,
-            height: 1040,
+            width: '1140px',
+            height: '1140px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             perspective: 900,
             borderRadius: 32,
-            // boxShadow: '0 8px 32px rgba(50,50,50,0.12)',
-            // background: 'rgba(255,255,255,0.7)',
-            // border: '3px solid #7A6C4D',
+
             transition: 'box-shadow 0.3s',
           }}
         >
           <img
-            src={noteEditor3D}
+            src={noteEditor3DBlack}
             alt="Note Editor 3D"
             style={{
-              width: '90%',
-              height: '90%',
+              width: '100%',
+              height: '100%',
               objectFit: 'contain',
               transform: `rotateX(${-tilt.x}deg) rotateY(${tilt.y}deg)`,
               transition: 'transform 0.25s cubic-bezier(.25,.46,.45,.94)',
@@ -94,7 +95,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
           />
         </div>
         {/* Optional: Add a subtle mechanical overlay or grid */}
-        <div
+        {/* <div
           style={{
             position: 'absolute',
             inset: 0,
@@ -102,7 +103,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
             background: 'radial-gradient(circle at 60% 40%, rgba(122,108,77,0.08) 0%, transparent 80%)',
             zIndex: 1,
           }}
-        />
+        /> */}
       </div>
       {/* Right Side: Form */}
       <div
@@ -115,7 +116,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
           height: '100vh',
           minHeight: '100vh',
           width: '100%',
-          background: 'linear-gradient(120deg, #e0d8c3 0%, #b7b1a3 100%)',
+          background: 'transparent',
           padding: 0,
         }}
       >
@@ -131,7 +132,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
             boxShadow: 'none',
             border: 'none',
             background: 'transparent',
-            ...retroFont,
+            ...cleanFont,
           }}
         >
           {children}

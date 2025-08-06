@@ -30,11 +30,17 @@ export default function Home() {
   const appRef = useRef<HTMLDivElement>(null);
 
   const toggleTimer = () => {
-    setShowTimer(!showTimer);
+    setShowTimer((prev) => {
+      if (!prev) setShowHeatmap(false); // Close heatmap if opening timer
+      return !prev;
+    });
   };
 
   const toggleHeatmap = () => {
-    setShowHeatmap((prev) => !prev);
+    setShowHeatmap((prev) => {
+      if (!prev) setShowTimer(false); // Close timer if opening heatmap
+      return !prev;
+    });
   };
 
   const handleTimerStateChange = (isRunning: boolean) => {
@@ -142,7 +148,7 @@ export default function Home() {
         display: 'flex',
         gap: '2rem',
         padding: '2rem',
-        maxWidth: isEditorExpanded ? '1200px' : '1200px',
+        maxWidth: isEditorExpanded ? '1750px' : '1750px',
         margin: '0 auto',
         transition: 'max-width 0.3s ease'
       }}>
@@ -207,22 +213,57 @@ export default function Home() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'stretch',
-        maxWidth: isEditorExpanded ? '100%' : showGrid ? '60%' : '70%',
-        width: isEditorExpanded ? '100%' : showGrid ? '60%' : '70%',
+        // Shrink grid/editor based on which panel is open
+        maxWidth: focusMode
+          ? '100%'
+          : showTimer
+            ? timerRunning
+              ? '85%'   // Expand editor more when timer is minimized and running
+              : '75%'
+            : showHeatmap
+              ? '85%'
+              : '100%',
+        width: focusMode
+          ? '100%'
+          : showTimer
+            ? timerRunning
+              ? '85%'   // Expand editor more when timer is minimized and running
+              : '75%'
+            : showHeatmap
+              ? '85%'
+              : '100%',
         height: isEditorExpanded ? '1000px' : '950px',
         transition: 'max-width 0.5s ease'
       }}>
-        {/* Profile + Button group in one row */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '1.5rem',
-          marginTop: '1rem',
-          gap: '1.5rem',
-          position: 'relative',
-          justifyContent: 'space-between', // <-- Add this line
-        }}>
-          <LogoutButton size={50}/>
+        {/* Top bar with logo and button group */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: '1.5rem',
+            marginTop: '1rem',
+            gap: '1.5rem',
+            position: 'relative',
+            justifyContent: 'space-between',
+          }}
+        >
+          {/* Text Logo on the left */}
+          <span
+            style={{
+              fontFamily: "'Nunito Sans', sans-serif",
+              fontWeight: 900,
+              fontStyle: 'italic',
+              fontSize: '2.5rem',
+              color: '#000',
+              letterSpacing: '0.03em',
+              marginLeft: '1rem',
+              marginRight: '2.5rem',
+              userSelect: 'none',
+            }}
+          >
+            notizen.
+          </span>
+          {/* Button group and time display on the right */}
           <div 
             className={`button-group${focusMode ? ' focusMode-active' : ''}`}
             style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
@@ -332,17 +373,22 @@ export default function Home() {
               <span className="corner-anim-span"></span>
               <span className="button-content"><CalendarTodayIcon /></span>
             </PressableButton>
+            <LogoutButton size={50}/>
           </div>
         </div>
+
         {!focusMode && showGrid ? (
-          <DocumentsGrid onSelectNote={(note) => { 
-            if (user) recordActivity(user); // Track activity when user selects a note from grid
-            setNoteState(note); 
-            setShowGrid(false); 
-            if (note.noteId) {
-              console.log("Opened note from grid, noteId:", note.noteId);
-            }
-          }} />
+          <DocumentsGrid
+            onSelectNote={(note) => { 
+              if (user) recordActivity(user);
+              setNoteState(note); 
+              setShowGrid(false); 
+              if (note.noteId) {
+                console.log("Opened note from grid, noteId:", note.noteId);
+              }
+            }}
+            height={isEditorExpanded ? '1000px' : '950px'}
+          />
         ) : (
           <NoteEditor
             noteId={noteState.noteId}
@@ -365,7 +411,7 @@ export default function Home() {
             transition={{ duration: 0.35, ease: 'easeInOut' }}
             style={{
               flex: timerRunning ? 0 : 0,
-              minWidth: timerRunning ? '200px' : '330px',
+              minWidth: timerRunning ? '180px' : '280px',
               opacity: 1,
               transform: 'translateX(0)',
               transition: 'all 0.3s ease'

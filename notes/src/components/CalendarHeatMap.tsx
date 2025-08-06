@@ -42,6 +42,7 @@ export default function CalendarHeatMap() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 margin: '0 auto',
+                marginTop: '6.5rem',
                 justifyContent: 'center',
             }}
         >

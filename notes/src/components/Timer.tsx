@@ -164,6 +164,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
             transition: 'all 0.3s ease',
             maxWidth: '200px',
             margin: '0 auto',
+            marginTop: '6rem',
             padding: '1rem',
           }}
         >
@@ -186,7 +187,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
                 cy="60"
                 r="50"
                 fill="none"
-                stroke="rgba(255,255,255,0.2)"
+                stroke="#edede9"
                 strokeWidth="6"
               />
               <circle
@@ -195,7 +196,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
                 cy="60"
                 r="50"
                 fill="none"
-                stroke="rgba(255,255,255,0.8)"
+                stroke="#3a5a40"
                 strokeWidth="6"
                 strokeDasharray="157"
                 strokeDashoffset="0"
@@ -259,7 +260,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
               style={{
                 background: mode === 'work' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)',
                 border: 'none',
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.7rem',
                 borderRadius: '20px',
                 color: '#232323',
                 cursor: 'pointer',
@@ -273,7 +274,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
               style={{
                 background: mode === 'break' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)',
                 border: 'none',
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.7rem',
                 borderRadius: '20px',
                 color: '#232323',
                 cursor: 'pointer',
@@ -287,7 +288,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
               style={{
                 background: mode === 'longBreak' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)',
                 border: 'none',
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.7rem',
                 borderRadius: '20px',
                 color: '#232323',
                 cursor: 'pointer',
@@ -307,7 +308,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
               cy="100"
               r="90"
               fill="none"
-              stroke="rgba(255,255,255,0.2)"
+              stroke="#edede9"
               strokeWidth="8"
             />
             <circle
@@ -316,7 +317,7 @@ const Timer: React.FC<TimerProps> = ({ className = '', onStateChange }) => {
               cy="100"
               r="90"
               fill="none"
-              stroke="rgba(255,255,255,0.8)"
+              stroke="#3a5a40"
               strokeWidth="8"
               strokeDasharray="283"
               strokeDashoffset="0"

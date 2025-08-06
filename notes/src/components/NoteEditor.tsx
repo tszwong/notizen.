@@ -19,6 +19,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import FileDownloadDoneIcon from '@mui/icons-material/FileDownloadDone';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import 'katex/dist/katex.min.css';
+import { BlockMath } from 'react-katex';
 
 Quill.register('modules/imageResize', ImageResize);
 
@@ -50,6 +52,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
     const selectionRef = useRef<any>(null);
     const lastChangeSourceRef = useRef<string | null>(null);
     const [editorHeight, setEditorHeight] = useState<string | number>('auto');
+    const [lineCount, setLineCount] = useState(0);
+    const [highlightedLatexIdx, setHighlightedLatexIdx] = useState<number | null>(null);
 
     // Comprehensive toolbar configuration
     const modules = {
@@ -329,11 +333,19 @@ const summarizeSelectedText = async () => {
 useEffect(() => {
   const handleSelection = (e: Event) => {
     const selection = window.getSelection();
-    if (selection && selection.toString().trim().length > 0) {
+    // Only enable summarize highlight if selection is inside the text editor
+    const editorElem = quillRef.current?.getEditor().root;
+    if (
+      selection &&
+      selection.toString().trim().length > 0 &&
+      selection.anchorNode &&
+      editorElem &&
+      editorElem.contains(selection.anchorNode)
+    ) {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       setSelectedText(selection.toString());
-      setButtonPosition({ x: rect.left + window.scrollX, y: rect.top + window.scrollY - 30 }); // Position above the selection
+      setButtonPosition({ x: rect.left + window.scrollX, y: rect.top + window.scrollY - 30 });
     } else {
       setSelectedText('');
       setButtonPosition(null);
@@ -349,17 +361,39 @@ useEffect(() => {
   };
 }, []);
 
-  // Editor height logic
-  const computedEditorHeight = focusMode ? '58vh' : '100vh';
-  const editorStyle = {
-    minHeight: computedEditorHeight,
-    maxHeight: computedEditorHeight,
-    background: 'rgba(255, 255, 255, 0.95)',
-    overflow: 'auto',
-  };
+// Editor height logic
+const computedEditorHeight = focusMode ? '60vh' : '100vh';
+const editorStyle = {
+  minHeight: computedEditorHeight,
+  maxHeight: computedEditorHeight,
+  background: 'rgba(255, 255, 255, 0.95)',
+  overflow: 'auto',
+};
+
+// Helper: Split content into lines and find LaTeX lines with their index
+const getLatexLineIndices = (content: string) => {
+  // Remove HTML tags, split by lines
+  const text = content.replace(/<[^>]+>/g, '\n');
+  return text
+    .split('\n')
+    .map((line, idx) => ({ line: line.trim(), idx }))
+    .filter(({ line }) => /^\$.*\$$/.test(line));
+};
+
+const LATEX_PANEL_KEY = 'latexPanelMinimized';
+const [latexPanelMinimized, setLatexPanelMinimized] = useState<boolean>(() => {
+  // Default to minimized (hidden) unless user previously opened it
+  const saved = localStorage.getItem(LATEX_PANEL_KEY);
+  return saved === null ? true : saved === 'true';
+});
+
+// Persist minimized state
+useEffect(() => {
+  localStorage.setItem(LATEX_PANEL_KEY, latexPanelMinimized ? 'true' : 'false');
+}, [latexPanelMinimized]);
 
 return (
-  <div className={`note-editor-container ${className}`}>
+  <div className={`note-editor-container ${className}`} style={{ gap: '2rem' }}>
     {/* Green transition overlay with sliding "Deleting..." text */}
     {showDeleteOverlay && (
       <div
@@ -423,7 +457,7 @@ return (
         borderRadius: '40px', // <-- Add rounded corners to editor card
         borderColor: '#a3b18a',
         boxShadow: '0 4px 24px rgba(60,9,108,0.08)', // optional subtle shadow
-        background: 'rgba(255,255,255,0.95)',
+        // background: 'rgba(255,255,255,0.95)',
       }}
     >
       <div
@@ -588,19 +622,65 @@ return (
           )}
         </div>
       </div>
-      <ReactQuill
-        ref={quillRef}
-        theme="snow"
-        value={content}
-        onChange={handleContentChange}
-        modules={modules}
-        formats={formats}
-        placeholder="Start typing your notes..."
-        style={editorStyle}
-      />
-    </div>
 
-    <div style={{}}>
+      <div style={{ }}>
+        <ReactQuill
+          ref={quillRef}
+          theme="snow"
+          value={content}
+          onChange={handleContentChange}
+          modules={modules}
+          formats={formats}
+          placeholder="Start typing your notes..."
+          style={editorStyle}
+        />
+      </div>
+
+      {/* LaTeX Results Panel */}
+      <div style={{ width: '100%', marginTop: '1em' }}>
+      <button
+        onClick={() => setLatexPanelMinimized((prev) => !prev)}
+        style={{
+          background: '#7A6C4D',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          padding: '0.4em 1em',
+          fontWeight: 600,
+          cursor: 'pointer',
+          marginBottom: '1em',
+          fontSize: '0.8em',
+        }}
+        aria-label={latexPanelMinimized ? 'Show LaTeX Results' : 'Hide LaTeX Results'}
+      >
+        {latexPanelMinimized ? 'Show LaTeX Results' : 'Hide LaTeX Results'}
+      </button>
+      {!latexPanelMinimized && (
+        <div style={{
+          width: '100%',
+          maxHeight: '30vh',
+          overflowY: 'auto',
+          background: '#f8f8f8',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(60,9,108,0.08)',
+          padding: '1em',
+        }}>
+          {/* <div style={{ fontWeight: 600, marginBottom: '0.5em', color: '#7A6C4D' }}>LaTeX Results</div> */}
+          {getLatexLineIndices(content).map(({ line, idx }) => (
+            <div key={idx} style={{ marginBottom: '1.2em' }}>
+              <div style={{ fontSize: '0.95em', color: '#888', marginBottom: '0.2em' }}></div>
+              <BlockMath math={line.slice(1, -1)} errorColor="#cc0000" />
+            </div>
+          ))}
+          {getLatexLineIndices(content).length === 0 && (
+            <div style={{ color: '#bbb', fontSize: '0.95em' }}>No LaTeX detected.</div>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+
+    <div style={{ marginTop: '2rem', marginBottom: '5rem' }}>
         <div style={{ marginTop: '0.5rem', color: saving ? '#888' : '#588157', fontWeight: 500 }}>
           {saving ? 'Saving...' : 'Saved'}
         </div>
