@@ -39,6 +39,7 @@
     "material-react-table": "^3.2.1",
     "quill": "^2.0.3",
     "quill-better-table": "^1.2.10",
+    "quill-image-resize-module-react": "^3.0.0",
     "react": "^18.3.1",
     "react-7-segment-display": "^1.1.5",
     "react-awesome-button": "^7.0.5",
