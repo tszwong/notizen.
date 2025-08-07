@@ -20,6 +20,7 @@ import FileDownloadDoneIcon from '@mui/icons-material/FileDownloadDone';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import 'katex/dist/katex.min.css';
+// @ts-ignore
 import { BlockMath } from 'react-katex';
 
 Quill.register('modules/imageResize', ImageResize);

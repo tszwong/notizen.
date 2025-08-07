@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "build:aiSummary": "tsc -p tsconfig.gemini.json",
-    "start:aiSummary": "npm run build:aiSummary && node dist/aiSummary.js"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@claycot/react-7-segment-display": "^1.1.2",
@@ -29,8 +27,6 @@
     "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dotenv": "^17.2.1",
-    "express": "^5.1.0",
     "firebase": "^11.10.0",
     "framer-motion": "^12.23.5",
     "gsap": "^3.13.0",
@@ -55,8 +51,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
     "@types/node": "^24.1.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
@@ -70,8 +64,6 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.11",
     "tailwindcss-cli": "^0.1.2",
-    "ts-node": "^10.9.2",
-    "tw-animate-css": "^1.3.5",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^5.4.19"
