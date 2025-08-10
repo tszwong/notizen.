@@ -470,7 +470,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <AISummaryDisplay />
+      <AISummaryDisplay noteId={noteState.noteId} />
 
       {/* tool tips for the menu buttons */}
       <ReactTooltip id="focus-mode-tooltip" anchorSelect="[data-tooltip-id='focus-mode-tooltip']" />

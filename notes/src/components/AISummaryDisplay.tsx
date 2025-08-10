@@ -11,7 +11,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
-export default function AISummaryDisplay() {
+export default function AISummaryDisplay({ noteId }: { noteId: string | null }) {
     const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [summaries, setSummaries] = useState<AISummary[]>([]);
@@ -83,6 +83,11 @@ export default function AISummaryDisplay() {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return Math.max(0, diffDays);
     };
+
+    // After fetching summaries, filter by noteId
+    const filteredSummaries = noteId
+        ? summaries.filter(s => s.noteId === noteId)
+        : [];
 
     return (
         <>
@@ -203,7 +208,7 @@ export default function AISummaryDisplay() {
                                 >
                                     Loading summaries...
                                 </div>
-                            ) : summaries.length === 0 ? (
+                            ) : filteredSummaries.length === 0 ? (
                                 <div
                                     style={{
                                         display: 'flex',
@@ -220,7 +225,7 @@ export default function AISummaryDisplay() {
                                 </div>
                             ) : (
                                 <div style={{ padding: '16px 0', flex: 1 }}>
-                                    {summaries.map((summary, index) => (
+                                    {filteredSummaries.map((summary, index) => (
                                         <motion.div
                                             key={summary.id}
                                             initial={{ opacity: 0, y: 20 }}
