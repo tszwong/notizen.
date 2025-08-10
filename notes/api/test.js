@@ -1,3 +1,5 @@
+// /notes/api/test.js
+
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({

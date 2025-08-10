@@ -1,3 +1,6 @@
+// /notes/api/summarize.js
+// This API endpoint summarizes content using Google Gemini AI.
+
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({

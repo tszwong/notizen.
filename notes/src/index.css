@@ -510,3 +510,55 @@ input, select, textarea {
     @apply bg-background text-foreground;
   }
 }
+
+.todo-list-container, .todo-list-card {
+  padding: 2rem;
+  margin: 0 auto 2rem auto;
+  max-width: 1000px;
+  width: 100%;
+}
+
+.todo-list-card {
+  /* background: var(--color-surface); */
+  border: 1.5px solid var(--color-border);
+  border-radius: 35px;
+  box-shadow: none;
+  margin-top: 1rem;
+}
+
+.todo-list-page {
+  background-color: var(--color-bg);
+  width: 100%;
+}
+
+body.todo-page-bg {
+  background: var(--color-bg) !important;
+}
+
+#root {
+  max-width: none !important;
+  margin: 0 !important;
+  text-align: initial !important;
+}
+
+.sidebar-container, .main-content-container {
+  font-family: "'Nunito Sans', sans-serif";
+}
+
+.sidebar-container {
+  /* background-color: var(--color-bg); */
+  border-color: var(--color-border);
+}
+
+.sidebar-container h1,
+.sidebar-container h2,
+.sidebar-container h3,
+.sidebar-container h4,
+.main-content-container h1,
+.main-content-container h2,
+.main-content-container h3,
+.main-content-container h4 {
+  color: #000;
+  font-family: "'Nunito Sans', sans-serif";
+  margin-left: 0.55rem;
+}

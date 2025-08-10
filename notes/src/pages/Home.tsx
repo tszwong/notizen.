@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
 import NoteEditor from "../components/NoteEditor";
 import Timer from "../components/Timer";
 import DocumentsGrid from "../components/DocumentsGrid";
@@ -6,12 +8,15 @@ import CalendarHeatMap from "../components/CalendarHeatMap";
 import LogoutButton from "../components/LogoutButton";
 import PressableButton from '../components/PressableButton';
 import TimeDisplay from '../components/TimeDisplay';
+import AISummaryDisplay from '../components/AISummaryDisplay';
 
 import AccessAlarmIcon from '@mui/icons-material/AccessAlarm';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PlayLessonIcon from '@mui/icons-material/PlayLesson';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import ChecklistIcon from '@mui/icons-material/Checklist';
+import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined';
 // import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
 import { Tooltip as ReactTooltip } from 'react-tooltip';
@@ -23,6 +28,7 @@ import { getNoteById } from '../utils/notesFirestore';
 
 export default function Home() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showTimer, setShowTimer] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -112,20 +118,20 @@ export default function Home() {
   }, [noteState.noteId]);
 
   useEffect(() => {
-  const savedNoteId = localStorage.getItem('lastNoteId');
-  if (savedNoteId) {
-    // Fetch the note data from Firestore
-    getNoteById(savedNoteId).then(note => {
-      if (note) {
-        setNoteState({
-          noteId: note.id || savedNoteId,
-          title: note.title || '',
-          content: note.content || '',
-        });
-      }
-    });
-  }
-}, []);
+    const savedNoteId = localStorage.getItem('lastNoteId');
+    if (savedNoteId) {
+      // Fetch the note data from Firestore
+      getNoteById(savedNoteId).then(note => {
+        if (note) {
+          setNoteState({
+            noteId: note.id || savedNoteId,
+            title: note.title || '',
+            content: note.content || '',
+          });
+        }
+      });
+    }
+  }, []);
 
 
   // Determine if editor should be expanded
@@ -208,7 +214,7 @@ export default function Home() {
           }
         `}
       </style>
-      <div style={{ 
+      <div style={{
         flex: isEditorExpanded ? 1 : 1,
         display: 'flex',
         flexDirection: 'column',
@@ -254,7 +260,7 @@ export default function Home() {
               fontWeight: 900,
               fontStyle: 'italic',
               fontSize: '2.5rem',
-              color: '#000',
+              color: focusMode ? '#fff' : '#000',
               letterSpacing: '0.03em',
               marginLeft: '1rem',
               marginRight: '2.5rem',
@@ -264,38 +270,11 @@ export default function Home() {
             notizen.
           </span>
           {/* Button group and time display on the right */}
-          <div 
+          <div
             className={`button-group${focusMode ? ' focusMode-active' : ''}`}
             style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
           >
             <TimeDisplay />
-            <PressableButton
-              onClick={() => setfocusMode((prev) => !prev)}
-              className="key-effect focus-mode-btn button-corner-anim"
-              aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
-              data-tooltip-id="focus-mode-tooltip"
-              data-tooltip-content={focusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
-              style={{
-                background: focusMode ? '#b0c4b1' : '#606c38',
-                padding: '0.75rem',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '1.2rem',
-                fontWeight: '500',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '40px',
-                height: '35px',
-                marginRight: '1rem',
-                zIndex: 2
-              }}
-            >
-              <span className="corner-anim-span"></span>
-              <span className="button-content">{focusMode ? "⏹" : <PlayLessonIcon />}</span>
-            </PressableButton>
-
             <PressableButton
               onClick={() => setShowGrid((prev) => !prev)}
               className="key-effect hide-when-focus button-corner-anim"
@@ -320,6 +299,32 @@ export default function Home() {
             >
               <span className="corner-anim-span"></span>
               <span className="button-content">{showGrid ? <ExpandLessIcon /> : <ExpandMoreIcon />}</span>
+            </PressableButton>
+
+            <PressableButton
+              onClick={() => navigate("/dashboard")}
+              className="key-effect hide-when-focus button-corner-anim"
+              aria-label="To-Do Lists"
+              data-tooltip-id="dashboard-tooltip"
+              data-tooltip-content="Dashboard"
+              style={{
+                padding: '0.75rem',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                fontWeight: '500',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '35px',
+                marginRight: '1rem',
+                zIndex: 2
+              }}
+            >
+              <span className="corner-anim-span"></span>
+              <span className="button-content"><SpaceDashboardOutlinedIcon /></span>
             </PressableButton>
 
             <PressableButton
@@ -373,16 +378,44 @@ export default function Home() {
               <span className="corner-anim-span"></span>
               <span className="button-content"><CalendarTodayIcon /></span>
             </PressableButton>
-            <LogoutButton size={50}/>
+
+            <PressableButton
+              onClick={() => setfocusMode((prev) => !prev)}
+              className="key-effect focus-mode-btn button-corner-anim"
+              aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+              data-tooltip-id="focus-mode-tooltip"
+              data-tooltip-content={focusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
+              style={{
+                background: focusMode ? '#b0c4b1' : '#606c38',
+                padding: '0.75rem',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                fontWeight: '500',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '35px',
+                marginRight: '1rem',
+                zIndex: 2
+              }}
+            >
+              <span className="corner-anim-span"></span>
+              <span className="button-content">{focusMode ? "⏹" : <PlayLessonIcon />}</span>
+            </PressableButton>
+
+            <LogoutButton size={50} />
           </div>
         </div>
 
         {!focusMode && showGrid ? (
           <DocumentsGrid
-            onSelectNote={(note) => { 
+            onSelectNote={(note) => {
               if (user) recordActivity(user);
-              setNoteState(note); 
-              setShowGrid(false); 
+              setNoteState(note);
+              setShowGrid(false);
               if (note.noteId) {
                 console.log("Opened note from grid, noteId:", note.noteId);
               }
@@ -400,7 +433,7 @@ export default function Home() {
           />
         )}
       </div>
-      
+
       <AnimatePresence>
         {!focusMode && showTimer && (
           <motion.div
@@ -437,12 +470,15 @@ export default function Home() {
         )}
       </AnimatePresence>
 
+      <AISummaryDisplay />
+
       {/* tool tips for the menu buttons */}
       <ReactTooltip id="focus-mode-tooltip" anchorSelect="[data-tooltip-id='focus-mode-tooltip']" />
       <ReactTooltip id="document-grid-tooltip" anchorSelect="[data-tooltip-id='document-grid-tooltip']" />
+      <ReactTooltip id="dashboard-tooltip" anchorSelect="[data-tooltip-id='dashboard-tooltip']" />
       <ReactTooltip id="timer-tooltip" anchorSelect="[data-tooltip-id='timer-tooltip']" />
       <ReactTooltip id="activity-tracker-tooltip" anchorSelect="[data-tooltip-id='activity-tracker-tooltip']" />
     </div>
-    
+
   );
 }

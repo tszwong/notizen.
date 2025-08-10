@@ -7,6 +7,7 @@ import './App.css';
 import Home from './pages/Home';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ToDoListsPage from './pages/ToDoListsPage';
 import Dashboard from './pages/Dashboard';
 
 export default function App() {
@@ -32,7 +33,17 @@ export default function App() {
         } />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        {/* <Route path="/dashboard" element={<Dashboard />} /> */}
+        {/* <Route
+          path="/todos"
+          element={
+            <ToDoListsPage
+              title="My To-Do List"
+              items={[]}
+              onChange={() => {}}
+            />
+          }
+        /> */}
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </AuthProvider>
   )
