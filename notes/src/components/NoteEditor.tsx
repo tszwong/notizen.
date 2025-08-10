@@ -321,8 +321,19 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
       const data = await response.json();
 
       if (data.success && data.response) {
-        const summarySection = `<br><br><strong>--- AI Summary ---</strong><br>${data.response}<br><strong>--- End Summary ---</strong><br><br>`;
-        onNoteChange({ noteId, title, content: content + summarySection });
+        // Save the summary to Firestore instead of appending to content
+        if (!user) {
+          alert('User not authenticated.');
+          return;
+        }
+        await createAISummary(
+          user.uid,
+          noteId,
+          title || 'Untitled Note',
+          selectedText,
+          data.response
+        );
+        alert('Summary generated and saved to AI Logs!');
       } else {
         console.error('AI summary failed:', data.error);
         alert(`Failed to generate summary: ${data.error || 'Unknown error'}`);
@@ -572,7 +583,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
             </PressableButton>
           
             <PressableButton
-              onClick={summarizeWithAI}
+              onClick={handleAISummary}
               className="nbg-button-corner-anim"
               aria-label={summarizing ? 'Summarizing content...' : 'Summarize with AI'}
               data-tooltip-id="ai-summary-tooltip"
