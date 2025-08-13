@@ -5,8 +5,6 @@ import { useAuth } from './auth/AuthProvider';
 import type { AISummary } from '../utils/notesFirestore';
 import { getUserAISummaries, deleteExpiredAISummaries, deleteAISummary } from '../utils/notesFirestore';
 
-import LiquidGlass from 'liquid-glass-react'
-
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
