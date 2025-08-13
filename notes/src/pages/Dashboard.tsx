@@ -1,13 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useNavigate } from "react-router-dom";
 
-import { getUserToDoLists, createToDoList, updateToDoList, deleteToDoList } from '../utils/notesFirestore';
+import { getUserToDoLists, createToDoList, updateToDoList, deleteToDoList, getUserStats, updateUserStats } from '../utils/notesFirestore';
 import type { ToDoListData, ChecklistItem } from '../types/todo';
 import TodoList from '../components/ToDoList';
+import CalendarHeatMap from '../components/CalendarHeatMap';
 import PressableButton from '../components/PressableButton';
+import { getPriorityCompletionData } from '../utils/GetPrioCompletionStats';
+import { getCurrentStreak, getActivityData } from '../utils/activityTracker';
+
+// @ts-ignore
+import yacht_img from '../assets/yacht.jpg';
+// @ts-ignore
+import snow_mountain from '../assets/snow_mountains.jpg';
+// @ts-ignore
+import beach from '../assets/beach.jpg';
+// @ts-ignore
+import forest from '../assets/forest.jpg';
 
 import { Tooltip as ReactTooltip } from 'react-tooltip';
+import { Bar } from 'react-chartjs-2';
+
+// MUI imports
+import { PieChart } from '@mui/x-charts/PieChart';
+import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
 
 import {
     Calendar,
@@ -24,26 +41,77 @@ import {
 } from 'lucide-react';
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 
+function unflattenStats(flat: any) {
+    const stats: any = { priorityCounts: {}, taskStats: {}, overdueStats: {} };
+    for (const key in flat) {
+        if (key.startsWith('priorityCounts.')) {
+            const sub = key.split('.')[1];
+            stats.priorityCounts[sub] = flat[key];
+        } else if (key.startsWith('taskStats.')) {
+            // Handle flat keys like 'taskStats.created' and 'taskStats.completed'
+            const parts = key.split('.');
+            if (parts.length === 2) {
+                stats.taskStats[parts[1]] = flat[key];
+            } else if (parts.length === 3) {
+                // legacy: date-based stats, ignore or migrate if needed
+                // Optionally: migrate to flat here
+            }
+        } else if (key.startsWith('overdueStats.')) {
+            const sub = key.split('.')[1];
+            stats.overdueStats[sub] = flat[key];
+        } else {
+            stats[key] = flat[key];
+        }
+    }
+    return stats;
+}
+
 const Dashboard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [lists, setLists] = useState<ToDoListData[]>([]);
     const [selectedListId, setSelectedListId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeView, setActiveView] = useState('today');
+    const [activeView, setActiveView] = useState('overview');
     const [showAllLists, setShowAllLists] = useState(false);
     const [showNewListModal, setShowNewListModal] = useState(false);
     const [newListTitle, setNewListTitle] = useState('');
     const [isCreatingList, setIsCreatingList] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [listToDelete, setListToDelete] = useState<{ id: string, title: string } | null>(null);
+    const [stats, setStats] = useState<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [size, setSize] = useState(250);
+    const [currentStreak, setCurrentStreak] = useState(0);
 
     const cleanFont = {
         fontFamily: "'Nunito Sans', sans-serif",
     };
 
+    const glassStyle = {
+        backgroundColor: 'rgba(255,255,255,0.6)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        boxShadow: '-4px 4px 16px rgba(0,0,0,0.13)',
+        border: '1px solid #e0e0e0',
+        borderRadius: '25px',
+    };
+
+    // Responsive size for the list container
     type ListType = { id: string; name: string; color: string; count: number };
     const [selectedList, setSelectedList] = useState<ListType | null>(null);
+
+    useEffect(() => {
+        function handleResize() {
+            if (containerRef.current) {
+                const width = containerRef.current.offsetWidth;
+                setSize(Math.max(150, Math.min(width, 350))); // min 150, max 350
+            }
+        }
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Get all tasks from all lists
     const getAllTasks = () => {
@@ -84,6 +152,16 @@ const Dashboard = () => {
         }).sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''));
     };
 
+    // Get overdue tasks
+    const getOverdueTasks = () => {
+        const todayStr = getLocalDateString(new Date());
+        return getAllTasks().filter(task =>
+            task.dueDate &&
+            !task.completed &&
+            task.dueDate < todayStr // Only dates strictly before today
+        );
+    };
+
     useEffect(() => {
         if (!user) return;
         setLoading(true);
@@ -93,6 +171,20 @@ const Dashboard = () => {
                 .map(list => ({ ...list, id: list.id as string }));
             setLists(validLists);
             setLoading(false);
+        });
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+        getUserStats(user.uid).then(rawStats => {
+            setStats(unflattenStats(rawStats || {}));
+        });
+    }, [user, lists]);
+
+    useEffect(() => {
+        if (!user) return;
+        getActivityData(user).then(activityData => {
+            setCurrentStreak(getCurrentStreak(activityData));
         });
     }, [user]);
 
@@ -156,7 +248,7 @@ const Dashboard = () => {
     // New List Modal Component
     const NewListModal = () => (
         showNewListModal && (
-            <div 
+            <div
                 className="fixed inset-0 flex items-center justify-center z-50"
                 style={{
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -165,9 +257,9 @@ const Dashboard = () => {
             >
                 <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 
+                        <h2
                             className="text-xl font-semibold text-gray-900"
-                            style={{ 
+                            style={{
                                 ...cleanFont,
                                 color: 'black',
                                 fontWeight: '900'
@@ -225,7 +317,7 @@ const Dashboard = () => {
     // Delete List Modal Component
     const DeleteListModal = ({ open, onCancel, onConfirm, listTitle }: { open: boolean, onCancel: () => void, onConfirm: () => void, listTitle: string }) => (
         open && (
-            <div 
+            <div
                 className="fixed inset-0 flex items-center justify-center z-50"
                 style={{
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -235,7 +327,7 @@ const Dashboard = () => {
             >
                 <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 
+                        <h2
                             className="text-xl font-semibold text-gray-900"
                             style={{ fontWeight: '900', ...cleanFont, color: 'black' }}
                         >
@@ -268,7 +360,7 @@ const Dashboard = () => {
 
     // Task Component for Today/Upcoming views
     const TaskCard = ({ task, showListTitle = false }: { task: any; showListTitle?: boolean }) => (
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="bg-white p-4 rounded-xl border border-gray-200 upper-layer">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
                     <input
@@ -296,18 +388,18 @@ const Dashboard = () => {
                 <div className="flex items-center gap-10">
                     {task.priority && (
                         <span className={`px-4 py-2 text-sm font-semibold rounded ${task.priority === 'high' ? 'bg-red-100 text-red-700' :
-                                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-green-100 text-green-700'
+                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-green-100 text-green-700'
                             }`}>
                             {task.priority}
                         </span>
                     )}
                     {task.dueDate && (
                         <span className="text-md text-gray-500">
-                          {(() => {
-                            const [year, month, day] = task.dueDate.split('-');
-                            return `${year}/${month}/${day}`;
-                          })()}
+                            {(() => {
+                                const [year, month, day] = task.dueDate.split('-');
+                                return `${year}/${month}/${day}`;
+                            })()}
                         </span>
                     )}
                     <button
@@ -321,13 +413,43 @@ const Dashboard = () => {
         </div>
     );
 
+    const allTasks = getAllTasks();
+    const { total, completed } = getPriorityCompletionData(allTasks);
+
+    const barData = {
+        labels: ['Low', 'Medium', 'High'],
+        datasets: [
+            {
+                label: 'Completed',
+                data: [completed.low, completed.medium, completed.high],
+                backgroundColor: ['#d9ddbbff', '#b0c4b1', '#606c38'],
+            },
+            {
+                label: 'Total',
+                data: [total.low, total.medium, total.high],
+                backgroundColor: ['#bdbdbd', '#bdbdbd', '#bdbdbd'],
+            },
+        ],
+    };
+
+    const barOptions = {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' as const },
+            tooltip: { enabled: true },
+        },
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+        },
+    };
+
     const renderSidebar = () => (
-        <div 
-            className="w-[23%] bg-gray-50 border-r border-gray-200 h-screen flex flex-col sidebar-container"
-            style={{}}
+        <div
+            className="w-[23%] bg-[rgb(244,241,235)] h-screen flex flex-col sidebar-container"
+            style={{ maxWidth: 340 }}
         >
             {/* Header */}
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-gray-300">
                 <div className="flex items-center gap-3">
                     <PressableButton
                         onClick={() => navigate("/")}
@@ -357,15 +479,15 @@ const Dashboard = () => {
 
                     <span
                         style={{
-                        fontFamily: "'Nunito Sans', sans-serif",
-                        fontWeight: 900,
-                        fontStyle: 'italic',
-                        fontSize: '2rem',
-                        color: '#000',
-                        letterSpacing: '0.03em',
-                        marginLeft: '0rem',
-                        marginRight: '1rem',
-                        userSelect: 'none',
+                            fontFamily: "'Nunito Sans', sans-serif",
+                            fontWeight: 900,
+                            fontStyle: 'italic',
+                            fontSize: '2rem',
+                            color: '#000',
+                            letterSpacing: '0.03em',
+                            marginLeft: '0rem',
+                            marginRight: '1rem',
+                            userSelect: 'none',
                         }}
                     >
                         notizen.
@@ -385,10 +507,10 @@ const Dashboard = () => {
             </div> */}
 
             {/* Navigation */}
-            <div 
+            <div
                 className="flex-1 px-4 overflow-y-auto"
-                style={{ 
-                    paddingTop: '1rem' 
+                style={{
+                    paddingTop: '1rem'
                 }}
             >
                 {/* Overview */}
@@ -396,8 +518,8 @@ const Dashboard = () => {
                     <button
                         onClick={() => setActiveView('overview')}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${activeView === 'overview'
-                                ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
-                                : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
+                            : 'text-gray-700 hover:bg-gray-300'
                             }`}
                     >
                         <LayoutGrid className="w-4 h-4" />
@@ -414,8 +536,8 @@ const Dashboard = () => {
                         <button
                             onClick={() => setActiveView('upcoming')}
                             className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${activeView === 'upcoming'
-                                    ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
-                                    : 'text-gray-700 hover:bg-gray-100'
+                                ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
+                                : 'text-gray-700 hover:bg-gray-300'
                                 }`}
                         >
                             <div className="flex items-center gap-3">
@@ -423,11 +545,10 @@ const Dashboard = () => {
                                 <span>Upcoming</span>
                             </div>
                             <span
-                                className={`text-xs px-2 py-1 rounded-full min-w-[2em] text-center inline-flex items-center justify-center ${
-                                    getUpcomingTasks().length >= 1
-                                        ? ''
-                                        : 'bg-gray-200 text-gray-600'
-                                }`}
+                                className={`text-xs px-2 py-1 rounded-full min-w-[2em] text-center inline-flex items-center justify-center ${getUpcomingTasks().length >= 1
+                                    ? ''
+                                    : 'bg-gray-200 text-gray-600'
+                                    }`}
                                 style={
                                     getUpcomingTasks().length >= 1
                                         ? { backgroundColor: '#fcbf49', color: '#232323' }
@@ -440,8 +561,8 @@ const Dashboard = () => {
                         <button
                             onClick={() => setActiveView('today')}
                             className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${activeView === 'today'
-                                    ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
-                                    : 'text-gray-700 hover:bg-gray-100'
+                                ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
+                                : 'text-gray-700 hover:bg-gray-300'
                                 }`}
                         >
                             <div className="flex items-center gap-3">
@@ -449,11 +570,10 @@ const Dashboard = () => {
                                 <span>Today</span>
                             </div>
                             <span
-                                className={`text-xs px-2 py-1 rounded-full min-w-[2em] text-center inline-flex items-center justify-center ${
-                                    getTodayTasks().length >= 1
-                                        ? ''
-                                        : 'bg-gray-200 text-gray-600'
-                                }`}
+                                className={`text-xs px-2 py-1 rounded-full min-w-[2em] text-center inline-flex items-center justify-center ${getTodayTasks().length >= 1
+                                    ? ''
+                                    : 'bg-gray-200 text-gray-600'
+                                    }`}
                                 style={
                                     getTodayTasks().length >= 1
                                         ? { backgroundColor: '#fcbf49', color: '#232323' }
@@ -466,8 +586,8 @@ const Dashboard = () => {
                         <button
                             onClick={() => setActiveView('calendar')}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${activeView === 'calendar'
-                                    ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
-                                    : 'text-gray-700 hover:bg-gray-100'
+                                ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
+                                : 'text-gray-700 hover:bg-gray-300'
                                 }`}
                         >
                             <Calendar className="w-4 h-4" />
@@ -500,23 +620,22 @@ const Dashboard = () => {
                                     setActiveView('list');
                                 }}
                                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${selectedListId === list.id && activeView === 'list'
-                                        ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
-                                        : 'text-gray-700 hover:bg-gray-100'
+                                    ? 'bg-[rgba(172,222,175,0.40)] text-[rgba(36,101,38,0.9)]'
+                                    : 'text-gray-700 hover:bg-gray-300'
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <div 
-                                        className="w-3 h-3 rounded-full bg-blue-400" 
+                                    <div
+                                        className="w-3 h-3 rounded-full bg-blue-400"
                                         style={{ backgroundColor: list.color || "#60a5fa" }}
                                     />
                                     <span>{list.title}</span>
                                 </div>
                                 <span
-                                    className={`text-xs px-2 py-1 rounded-full min-w-[2em] text-center inline-flex items-center justify-center ${
-                                        list.items.length >= 1
-                                            ? ''
-                                            : 'bg-gray-200 text-gray-600'
-                                    }`}
+                                    className={`text-xs px-2 py-1 rounded-full min-w-[2em] text-center inline-flex items-center justify-center ${list.items.length >= 1
+                                        ? ''
+                                        : 'bg-gray-200 text-gray-600'
+                                        }`}
                                     style={
                                         list.items.length >= 1
                                             ? { backgroundColor: '#fcbf49', color: '#232323' }
@@ -541,7 +660,7 @@ const Dashboard = () => {
                     </div>
                     <button
                         onClick={() => setShowNewListModal(true)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-gray-500 hover:bg-gray-100 transition-colors mt-2"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-gray-500 hover:bg-blue-200 transition-colors mt-2"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Add New List</span>
@@ -593,21 +712,21 @@ const Dashboard = () => {
         const upcomingTasks = getUpcomingTasks();
 
         return (
-            <div className="w-[77%] flex flex-col h-screen main-content-container">
+            <div className="w-[77%] flex flex-col h-screen main-content-container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 {/* Header */}
                 {!(activeView === 'list' && selectedListId) && (
                     <div
-                        className="bg-gray-50"
-                        style={{ 
+                        className=""
+                        style={{
                             padding: '2rem 2rem',
                             ...cleanFont,
                         }}
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <h1 
+                                <h1
                                     className="text-2xl font-bold"
-                                    style={{ 
+                                    style={{
                                         ...cleanFont,
                                         color: '#1F2937',
                                     }}
@@ -643,7 +762,9 @@ const Dashboard = () => {
                 )}
 
                 {/* Content */}
-                <div className="flex-1 p-6 bg-gray-50 overflow-y-auto">
+                <div
+                    className={`flex-1 p-10 overflow-y-auto rounded-3xl${activeView !== 'list' ? ' bg-gray-50 upper-layer' : ''}`}
+                >
                     {activeView === 'today' && (
                         <div className="space-y-4">
                             {todayTasks.map((task) => (
@@ -651,7 +772,7 @@ const Dashboard = () => {
                             ))}
                             {todayTasks.length === 0 && (
                                 <div className="text-center py-12 text-gray-500">
-                                    <Clock className="w-25 h-25 mx-auto mb-4 text-gray-300" />
+                                    <Clock className="w-25 h-25 mx-auto mb-4 text-white" />
                                     <h3 className="text-lg font-medium mt-10 mb-2">No tasks due today</h3>
                                 </div>
                             )}
@@ -665,33 +786,165 @@ const Dashboard = () => {
                             ))}
                             {upcomingTasks.length === 0 && (
                                 <div className="text-center py-12 text-gray-500">
-                                    <CalendarDays className="w-25 h-25 mx-auto mb-4 text-gray-300" />
+                                    <CalendarDays className="w-25 h-25 mx-auto mb-4 text-white" />
                                     <h3 className="text-lg font-medium mt-10 mb-2">You're all caught up for this week!</h3>
                                 </div>
                             )}
                         </div>
                     )}
 
+                    {/* Overview metrics */}
                     {activeView === 'overview' && (
                         <div className="space-y-6">
+                            {/* Overview Stats of Tasks and Lists */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Tasks</h3>
-                                    <p className="ml-3 text-3xl font-bold text-blue-600">{getAllTasks().length}</p>
-                                    <p className="ml-3 text-sm text-gray-500 mt-1">{getAllTasks().filter(t => t.completed).length} completed</p>
-                                </div>
-                                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Active Lists</h3>
-                                    <p className="ml-3 text-3xl font-bold text-green-600">{lists.length}</p>
-                                    <p className="ml-3 text-sm text-gray-500 mt-1">Managing your tasks</p>
-                                </div>
-                                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Due Today</h3>
-                                    <p className="ml-3 text-3xl font-bold text-red-600">{todayTasks.length}</p>
-                                    <p className="ml-3 text-sm text-gray-500 mt-1">Need attention today</p>
+                                <div className="p-6 rounded-3xl col-span-3 flex flex-col md:flex-row justify-between items-center gap-8 upper-layer">
+                                    <div className="flex flex-col items-center flex-1 border-r border-gray-300">
+                                        <span className="text-sm text-gray-500 mb-1">Active Lists</span>
+                                        <span className="text-3xl font-bold text-black">{lists.length}</span>
+                                    </div>
+                                    <div className="flex flex-col items-center flex-1">
+                                        <span className="text-sm text-gray-500 mb-1">Total Tasks</span>
+                                        <span className="text-3xl font-bold text-black">{getAllTasks().length}</span>
+                                    </div>
+                                    <div className="flex flex-col items-center flex-1">
+                                        <span className="text-sm text-gray-500 mb-1">Due Today</span>
+                                        <span className="text-3xl font-bold text-[#ffb703]">{todayTasks.length}</span>
+                                    </div>
+                                    <div className="flex flex-col items-center flex-1">
+                                        <span className="text-sm text-gray-500 mb-1">Overdue</span>
+                                        <span className="text-3xl font-bold text-[#e63946]">{getOverdueTasks().length}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="bg-white p-6 rounded-lg border border-gray-200">
+
+                            {/* Task Priority Distribution Pie Chart */}
+                            {stats && (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="p-6 rounded-3xl col-span-2 row-span-2 flex flex-col upper-layer">
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Task Priority Distribution</h3>
+                                        <div ref={containerRef} style={{ width: '100%', maxWidth: 1050, margin: '0 auto' }}>
+                                            <PieChart
+                                                series={[
+                                                    {
+                                                        data: [
+                                                            { id: 0, value: stats.priorityCounts?.low ?? 0, label: 'Low', color: '#d9ddbbff' },
+                                                            { id: 1, value: stats.priorityCounts?.medium ?? 0, label: 'Medium', color: '#b0c4b1' },
+                                                            { id: 2, value: stats.priorityCounts?.high ?? 0, label: 'High', color: '#606c38' }
+                                                        ],
+                                                        innerRadius: 60,
+                                                        outerRadius: 100,
+                                                        paddingAngle: 2,
+                                                        cornerRadius: 4,
+                                                        // startAngle: -90,
+                                                        // endAngle: 90,
+                                                    }
+                                                ]}
+                                                width={size}
+                                                height={size}
+                                            />
+                                            <div className="mt-5 flex justify-center items-center w-full">
+                                                <div style={{ width: Math.max(520, Math.min(size, 850)), maxWidth: '100%', height: 300 }}>
+                                                    <Bar data={barData} options={{ ...barOptions, maintainAspectRatio: false }} height={size * 0.5} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Current Streak and Task Completion */}
+                                    <div className="bg-white p-6 rounded-3xl border border-gray-200 flex flex-col justify-center upper-layer">
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Current Streak</h3>
+                                        <div className='ml-3 gap-3 flex flex-row items-center'>
+                                            <span className="text-3xl font-bold text-[#239a3b]">{currentStreak}</span>
+                                            <span className="text-sm text-gray-500 mt-1">days</span>
+                                        </div>
+                                        <CalendarHeatMap />
+                                        <ReactTooltip id="heatmap-tooltip" place="top" style={{ zIndex: 9999 }} />
+                                    </div>
+                                    <div
+                                        className="p-6 rounded-3xl flex flex-col items-center upper-layer"
+                                        style={{ minHeight: 250, maxHeight: 350, overflow: 'hidden' }}
+                                    >
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-2 self-start">Task Completion</h3>
+                                        <ul className="ml-3 mb-0 self-start" style={{ fontSize: 13, }}>
+                                            <li>
+                                                Created: {stats.taskStats?.created ?? 0}
+                                            </li>
+                                            <li>
+                                                Completed: {stats.taskStats?.completed ?? 0}
+                                            </li>
+                                            {/* <li>
+                                                Percent Completed: {stats.taskStats?.created
+                                                    ? `${Math.round((stats.taskStats?.completed ?? 0) / stats.taskStats.created * 100)}%`
+                                                    : 'N/A'}
+                                            </li> */}
+                                        </ul>
+                                        <div
+                                            style={{
+                                                width: '100%',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                margin: '2rem 0 0 0',
+                                            }}
+                                        >
+                                            <div style={{ width: '100%', maxWidth: 180 }}>
+                                                <div
+                                                    style={{
+                                                        background: '#e5e7eb',
+                                                        borderRadius: 8,
+                                                        height: 100,
+                                                        width: '100%',
+                                                        overflow: 'hidden',
+                                                        position: 'relative',
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            background: 'linear-gradient(90deg, #606c38 0%, #b0c4b1 70%, #e9edc9 100%)',
+                                                            opacity: 0.8,
+                                                            width: stats.taskStats?.created
+                                                                ? `${Math.round(
+                                                                    Math.min(
+                                                                        100,
+                                                                        (stats.taskStats?.completed ?? 0) / stats.taskStats.created * 100
+                                                                    )
+                                                                )}%`
+                                                                : '0%',
+                                                            height: '100%',
+                                                            transition: 'width 0.5s',
+                                                        }}
+                                                    />
+                                                    <span
+                                                        style={{
+                                                            position: 'absolute',
+                                                            left: '50%',
+                                                            top: '50%',
+                                                            transform: 'translate(-50%, -50%)',
+                                                            color: '#232323',
+                                                            ...cleanFont,
+                                                            fontWeight: 900,
+                                                            fontSize: 24,
+                                                            letterSpacing: 0.5,
+                                                            userSelect: 'none',
+                                                        }}
+                                                    >
+                                                        {stats.taskStats?.created
+                                                            ? `${Math.round((stats.taskStats?.completed ?? 0) / stats.taskStats.created * 100)}%`
+                                                            : '0%'}
+                                                    </span>
+                                                </div>
+                                                {/* <div style={{ marginTop: 6, textAlign: 'center', color: '#6b7280', fontSize: 13 }}>
+                                                    {stats.taskStats?.created
+                                                        ? `${stats.taskStats?.completed ?? 0} / ${stats.taskStats?.created ?? 0} completed`
+                                                        : '0 / 0 completed'}
+                                                </div> */}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {/* <div className="p-6 rounded-3xl border border-gray-200 upper-layer">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 text-sm">
@@ -710,14 +963,14 @@ const Dashboard = () => {
                                         <span className="text-gray-400 ml-auto">Today</span>
                                     </div>
                                 </div>
-                            </div>
+                            </div> */}
                         </div>
                     )}
 
                     {activeView === 'all-lists' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {lists.map((list) => (
-                                <div key={list.id} className="bg-white p-6 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+                                <div key={list.id} className="upper-layer bg-white p-6 rounded-3xl border border-gray-200 hover:shadow-md transition-shadow">
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-3">
                                             <div
@@ -742,7 +995,7 @@ const Dashboard = () => {
                             ))}
                             <div
                                 onClick={() => setShowNewListModal(true)}
-                                className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center hover:border-gray-400 transition-colors cursor-pointer"
+                                className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-3xl p-6 flex flex-col items-center justify-center hover:border-gray-400 transition-colors cursor-pointer"
                             >
                                 <Plus className="w-8 h-8 text-gray-400 mb-2" />
                                 <span className="text-gray-600 font-medium">Create New List</span>
@@ -794,10 +1047,28 @@ const Dashboard = () => {
         );
     }
 
+    console.log('Stats:', stats);
+
     return (
-        <div 
-            className="flex bg-gray-100 dashboard-page"
+        <div
+            className="flex bg-gray-100 dashboard-page relative"
+            style={{ height: '100vh', overflow: 'hidden' }}
         >
+            <div
+            style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 0,
+                backgroundImage: 'linear-gradient(to right top, #e9edc9, #dde6c4, #d2dec0, #c7d7bb, #bdcfb7, #b1c4ab, #a4b99f, #98ae93, #889d7c, #798d65, #6c7c4e, #606c38)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(18px)',
+                WebkitFilter: 'blur(18px)',
+                pointerEvents: 'none',
+                opacity: 0.5, 
+            }}
+            />
+            <div className="flex w-full relative z-10">
             {renderSidebar()}
             {renderMainContent()}
             <NewListModal />
@@ -806,13 +1077,14 @@ const Dashboard = () => {
                 listTitle={listToDelete?.title || ''}
                 onCancel={() => setShowDeleteModal(false)}
                 onConfirm={async () => {
-                    if (listToDelete) {
-                        await handleDeleteList(listToDelete.id);
-                        setShowDeleteModal(false);
-                        setListToDelete(null);
-                    }
+                if (listToDelete) {
+                    await handleDeleteList(listToDelete.id);
+                    setShowDeleteModal(false);
+                    setListToDelete(null);
+                }
                 }}
             />
+            </div>
         </div>
     );
 };

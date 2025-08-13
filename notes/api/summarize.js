@@ -54,10 +54,11 @@ export default async function handler(req, res) {
         - Summarize the following content using HTML formatting.
         - Use <ul> and <li> tags for bullet points and <ol> for numbered lists.
         - Indent subitems using nested <ul> or <ol> tags.
+        - Use <strong> for important points and <br> for line breaks.
         - Keep language simple and concise.
         - Avoid unnecessary details, repetition, or filler sentences.
         - If the content contains multiple sections or topics, separate them clearly with newlines by using <br> do not do slash n.
-        - Do not use any rich text formatting (e.g., no bold, italics, or markdown symbols).
+        - Do not use any rich text formatting (e.g. italics, or markdown symbols).
         - Always start the answer with a new line <br>, then "Summary: <br>" followed by the summary.
         - Make sure when we end the summary, it ends with a new line <br> and exit out of any lists <ul> or <li> or <ol>.
         - Do not end summary with a list item or bullet point.

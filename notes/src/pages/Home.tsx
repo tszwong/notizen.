@@ -353,7 +353,7 @@ export default function Home() {
               <span className="button-content"><AccessAlarmIcon /></span>
             </PressableButton>
 
-            <PressableButton
+            {/* <PressableButton
               onClick={toggleHeatmap}
               className="key-effect hide-when-focus button-corner-anim"
               aria-label="Activity Tracker"
@@ -377,7 +377,7 @@ export default function Home() {
             >
               <span className="corner-anim-span"></span>
               <span className="button-content"><CalendarTodayIcon /></span>
-            </PressableButton>
+            </PressableButton> */}
 
             <PressableButton
               onClick={() => setfocusMode((prev) => !prev)}
@@ -455,7 +455,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
+      {/* <AnimatePresence>
         {!focusMode && showHeatmap && (
           <motion.div
             key="heatmap"
@@ -468,7 +468,7 @@ export default function Home() {
             <ReactTooltip id="heatmap-tooltip" anchorSelect="rect[data-tooltip-id='heatmap-tooltip']" />
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
 
       <AISummaryDisplay noteId={noteState.noteId} />
 
@@ -477,7 +477,7 @@ export default function Home() {
       <ReactTooltip id="document-grid-tooltip" anchorSelect="[data-tooltip-id='document-grid-tooltip']" />
       <ReactTooltip id="dashboard-tooltip" anchorSelect="[data-tooltip-id='dashboard-tooltip']" />
       <ReactTooltip id="timer-tooltip" anchorSelect="[data-tooltip-id='timer-tooltip']" />
-      <ReactTooltip id="activity-tracker-tooltip" anchorSelect="[data-tooltip-id='activity-tracker-tooltip']" />
+      {/* <ReactTooltip id="activity-tracker-tooltip" anchorSelect="[data-tooltip-id='activity-tracker-tooltip']" /> */}
     </div>
 
   );

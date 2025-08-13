@@ -55,4 +55,22 @@ export const clearActivityData = async (user: User) => {
   if (!user) return;
   const ref = doc(db, ACTIVITY_COLLECTION, user.uid);
   await setDoc(ref, {});
-}; 
+};
+
+// Calculate the current streak (consecutive days with activity up to today)
+export const getCurrentStreak = (activityData: { [date: string]: boolean }): number => {
+  let streak = 0;
+  const today = new Date();
+  let current = new Date(today);
+
+  while (true) {
+    const dateStr = current.toISOString().split('T')[0];
+    if (activityData[dateStr]) {
+      streak++;
+      current.setDate(current.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+};

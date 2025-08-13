@@ -31,40 +31,45 @@ export default function CalendarHeatMap() {
 
     return (
         <div
+            className='border-t border-gray-400'
             style={{
-                background: 'rgb(207,199,181)',
-                borderRadius: '24px',
-                boxShadow: '0 4px 24px rgba(207,199,181,0.25)',
-                padding: '2rem 1.5rem',
-                width: '170px',
-                height: '240px',
+                // background: 'rgb(207,199,181)',
+                backgroundColor: 'transparent',
+                // boxShadow: '0 4px 24px rgba(207,199,181,0.25)',
+                // padding: '2rem 1.5rem',
+                width: '80%',
+                maxWidth: '2250px',
+                // height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 margin: '0 auto',
-                marginTop: '6.5rem',
+                marginTop: '1.25rem',
                 justifyContent: 'center',
             }}
         >
             <p
-            style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                color: '#232323',
-                fontWeight: 700,
-                fontSize: '1rem',
-                letterSpacing: '0.02em',
-                padding: '8px 15px',
-                display: 'inline-block',
-                borderRadius: '30px',
-                marginTop: '10px'
-            }}
+                style={{
+                    // backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    color: '#232323',
+                    fontWeight: 700,
+                    fontSize: '1.125rem',
+                    letterSpacing: '0.02em',
+                    // padding: '8px 10px',
+                    display: 'block',
+                    borderRadius: '30px',
+                    marginTop: '18px',
+                    textAlign: 'left',
+                    width: '100%',
+                }}
             >
                 Activity
             </p>
             <div
                 style={{
                     borderRadius: '16px',
-                    padding: '0.8rem 1rem 0.5rem',
+                    marginTop: '1rem',
+                    padding: '0.25rem 1rem 0.5rem',
                     width: '95%',
                     display: 'flex',
                     flexDirection: 'column',

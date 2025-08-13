@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { Trash2, Plus, GripVertical, Check } from "lucide-react";
 import { ChecklistItem } from "../types/todo";
+import { updateUserStats } from '../utils/notesFirestore';
+import { useAuth } from './auth/AuthProvider';
+import { increment as firestoreIncrement } from "firebase/firestore";
 
 interface ToDoListProps {
     title: string;
@@ -15,6 +18,9 @@ interface ToDoListProps {
 const ToDoList: React.FC<ToDoListProps> = ({
     title, items, onChange, onDelete, onRename, defaultMinimized = true, color: propColor
 }) => {
+    const { user } = useAuth();
+    const todayStr = new Date().toISOString().slice(0, 10);
+
     const [input, setInput] = useState("");
     const [dueDate, setDueDate] = useState("");
     const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
@@ -39,52 +45,82 @@ const ToDoList: React.FC<ToDoListProps> = ({
         setColor(propColor || "#60a5fa");
     }, [propColor]);
 
-    const handleAdd = () => {
-        console.log('handleAdd called with:', { input, dueDate, priority, description });
+    const handleAdd = async () => {
+    console.log('handleAdd called with:', { input, dueDate, priority, description });
 
-        // Only check if task name is provided
-        if (!input.trim()) {
-            setShowError("Task name is required.");
-            return;
-        }
+    // Only check if task name is provided
+    if (!input.trim()) {
+        setShowError("Task name is required.");
+        return;
+    }
 
-        // Create new item with proper handling of optional fields
-        const newItem: ChecklistItem = {
-            id: Date.now().toString(),
-            task: input.trim(),
-            completed: false,
-            priority, // This will always have a value since it defaults to "medium"
-        };
-
-        // Only add dueDate if it has a value
-        if (dueDate && dueDate.trim()) {
-            newItem.dueDate = dueDate;
-        }
-
-        // Only add description if it has content after trimming
-        if (description && description.trim()) {
-            newItem.description = description.trim();
-        }
-
-        // Add the new item to the list
-        console.log('Adding new item:', newItem);
-        console.log('Current items:', items);
-        onChange([...items, newItem]);
-
-        // Reset form fields
-        setInput("");
-        setDueDate("");
-        setPriority("medium");
-        setDescription("");
-        setShowError(null);
+    // Create new item with proper handling of optional fields
+    const newItem: ChecklistItem = {
+        id: Date.now().toString(),
+        task: input.trim(),
+        completed: false,
+        priority, // This will always have a value since it defaults to "medium"
     };
 
-    const handleToggle = (id: string) => {
+    // Only add dueDate if it has a value
+    if (dueDate && dueDate.trim()) {
+        newItem.dueDate = dueDate;
+    }
+
+    // Only add description if it has content after trimming
+    if (description && description.trim()) {
+        newItem.description = description.trim();
+    }
+
+    // Add the new item to the list
+    console.log('Adding new item:', newItem);
+    console.log('Current items:', items);
+    onChange([...items, newItem]);
+
+    // --- Update stats with proper structure ---
+    if (user) {
+        try {
+            await updateUserStats(user.uid, {
+                [`priorityCounts.${priority}`]: increment(1),
+                'taskStats.created': increment(1),
+            });
+            console.log('Stats updated successfully');
+        } catch (error) {
+            console.error('Error updating stats:', error);
+        }
+    }
+
+    // Reset form fields
+    setInput("");
+    setDueDate("");
+    setPriority("medium");
+    setDescription("");
+    setShowError(null);
+};
+
+    const handleToggle = async (id: string) => {
+        const item = items.find(i => i.id === id);
         onChange(
             items.map(item =>
                 item.id === id ? { ...item, completed: !item.completed } : item
             )
         );
+        // --- Update stats ---
+        if (user && item && !item.completed) { // Only count when marking as completed
+            await updateUserStats(user.uid, {
+                'taskStats.completed': increment(1),
+            });
+            // Overdue time
+            if (item.dueDate && new Date(item.dueDate) < new Date(todayStr)) {
+                const due = new Date(item.dueDate);
+                const now = new Date();
+                const overdueHours = Math.round((now.getTime() - due.getTime()) / (1000 * 60 * 60));
+                await updateUserStats(user.uid, {
+                    priorityCounts: { [priority]: increment(1) },
+                    taskStats: { [todayStr]: { created: increment(1) } },
+                });
+            }
+        }
     };
 
     const handleDelete = (id: string) => {
@@ -172,7 +208,7 @@ const ToDoList: React.FC<ToDoListProps> = ({
     };
 
     return (
-        <div className="bg-white rounded-lg todo-list-card">
+        <div className="bg-white rounded-lg todo-list-card upper-layer">
             {/* Error popup */}
             {showError && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
@@ -300,7 +336,8 @@ const ToDoList: React.FC<ToDoListProps> = ({
                             type="date"
                             value={dueDate}
                             onChange={(e) => setDueDate(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            // className="px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="border border-gray-300 rounded-full h-10 w-10 px-0 py-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                         <select
                             value={priority}
@@ -472,7 +509,7 @@ const ToDoList: React.FC<ToDoListProps> = ({
                                         type="date"
                                         value={editTask?.dueDate || ""}
                                         onChange={e => setEditTask(et => ({ ...et!, dueDate: e.target.value }))}
-                                        className="border px-2 py-1 rounded"
+                                        className="border px-2 py-1 rounded "
                                         style={{ cursor: "pointer" }}
                                     />
                                     <select
@@ -531,3 +568,8 @@ const ToDoList: React.FC<ToDoListProps> = ({
 };
 
 export default ToDoList;
+
+// Firestore increment helper for stats updates
+function increment(amount: number) {
+    return firestoreIncrement(amount);
+}

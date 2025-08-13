@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 
+// Extend the Window interface to include __idleTimer
+declare global {
+  interface Window {
+    __idleTimer?: ReturnType<typeof setTimeout>;
+  }
+}
+
 import { createNote, updateNote, getNoteById, deleteNote } from '../utils/notesFirestore';
 import { createAISummary } from '../utils/notesFirestore';
 import { useAuth } from './auth/AuthProvider';
@@ -36,7 +43,7 @@ interface NoteEditorProps {
   onNoteChange: (note: { noteId: string | null; title: string; content: string }) => void;
   onNewNote: () => void;
   className?: string;
-  focusMode?: boolean; // <-- Add this line
+  focusMode?: boolean;
 }
 
 const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteChange, onNewNote, className = '', focusMode = false }) => {
@@ -50,6 +57,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
   const [selectedText, setSelectedText] = useState('');
   const [buttonPosition, setButtonPosition] = useState<{ x: number; y: number } | null>(null);
   const [showDeleteOverlay, setShowDeleteOverlay] = useState(false);
+  const [idle, setIdle] = useState(false);
   const recognitionRef = useRef<any>(null);
   const lastSaved = useRef({ title: '', content: '' });
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,6 +68,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
   const [lineCount, setLineCount] = useState(0);
   const [highlightedLatexIdx, setHighlightedLatexIdx] = useState<number | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+
+  const cleanFont = {
+        fontFamily: "'Nunito Sans', sans-serif",
+    };
 
   // Comprehensive toolbar configuration
   const modules = {
@@ -450,16 +462,31 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
   }, [latexPanelMinimized]);
 
   useEffect(() => {
-    const THIRTY_MINUTES = 30 * 60 * 1000;
+    // const ONE_MINUTE = 1 * 60 * 1000;
+    const FORTY_FIVE_MINUTES = 45 * 60 * 1000;
     const timer = setTimeout(() => {
-      // Remove the cached note (adjust the key if needed)
-      localStorage.removeItem('lastNoteId');
-      // Optionally remove other cached keys if you use them
-      window.location.reload(); // Refresh to trigger new note UI
-    }, THIRTY_MINUTES);
+      setIdle(true);
+    }, FORTY_FIVE_MINUTES);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [noteId, title, content]); // Reset timer if user changes note or edits
+
+  // Optionally, reset timer on user activity (keypress, mousemove, etc.)
+  useEffect(() => {
+    if (!idle) {
+      const resetIdle = () => {
+        clearTimeout(window.__idleTimer);
+        window.__idleTimer = setTimeout(() => setIdle(true), 30 * 60 * 1000);
+      };
+      window.addEventListener('mousemove', resetIdle);
+      window.addEventListener('keydown', resetIdle);
+      return () => {
+        window.removeEventListener('mousemove', resetIdle);
+        window.removeEventListener('keydown', resetIdle);
+        clearTimeout(window.__idleTimer);
+      };
+    }
+  }, [idle]);
 
   return (
     <div className={`note-editor-container ${className}`} style={{ gap: '2rem' }}>
@@ -793,6 +820,45 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
         >
           <span className="nbg-button-content"><AutoAwesomeIcon /></span>
         </PressableButton>
+      )}
+
+      {idle && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(245,245,245,0.96)',
+            zIndex: 999999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <h2 style={{ fontSize: '2.2rem', color: '#000', marginBottom: '1.5rem', fontWeight: 800, ...cleanFont }}>
+            You've been idle for a while...
+          </h2>
+          <button
+            style={{
+              marginTop: '1rem',
+              background: '#606c38',
+              color: 'white',
+              fontSize: '1.2rem',
+              padding: '0.4em 1.8em',
+              borderRadius: '1.5em',
+              border: 'none',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(60,9,108,0.10)',
+            }}
+            onClick={() => setIdle(false)}
+          >
+            Go back to work
+          </button>
+        </div>
       )}
 
       <ReactTooltip id="recording-tooltip" anchorSelect="[data-tooltip-id='recording-tooltip']" />

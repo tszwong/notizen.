@@ -185,7 +185,7 @@ input, select, textarea {
 }
 
 /* Calendar heatmap color scale */
-.color-empty { fill: #eee; }
+.react-calendar-heatmap .color-empty { fill: #bdbdbd; }
 /* .color-scale { fill: #c6e48b; }
 .color-scale-2 { fill: #7bc96f; } */
 .color-scale-1 { fill: #239a3b; }
@@ -198,7 +198,20 @@ input, select, textarea {
 }
 
 .react-calendar-heatmap rect {
-  rx: 4.2;
+  rx: 3.2;
+  /* Add spacing between squares */
+  shape-rendering: geometricPrecision;
+}
+
+.react-calendar-heatmap .react-calendar-heatmap-day {
+  /* This selector targets the <rect> elements for each day */
+  /* Add margin by shrinking the size and using shape-rendering for crisp edges */
+  transform: translate(2.5px, 2.5px);
+}
+
+.react-calendar-heatmap rect {
+  width: 8px !important; /* slightly less than default */
+  height: 8px !important;
 }
 
 .react-calendar-heatmap-month-labels {
@@ -541,6 +554,12 @@ body.todo-page-bg {
   text-align: initial !important;
 }
 
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 .sidebar-container, .main-content-container {
   font-family: "'Nunito Sans', sans-serif";
 }
@@ -561,4 +580,64 @@ body.todo-page-bg {
   color: #000;
   font-family: "'Nunito Sans', sans-serif";
   margin-left: 0.55rem;
+}
+
+.summary-content ul {
+  list-style-type: disc;
+  margin: 0 0 0 1.2em;
+  padding-left: 1.2em;
+}
+.summary-content ol {
+  list-style-type: decimal;
+  margin: 0 0 0 1.2em;
+  padding-left: 1.2em;
+}
+.summary-content li {
+  margin-bottom: 0.3em;
+  padding-left: 0.1em;
+}
+.summary-content strong {
+  font-weight: bold;
+}
+.summary-content br {
+  display: block;
+  margin-bottom: 0.3em;
+}
+.summary-content p {
+  margin: 0 0 0.5em 0;
+}
+
+.opacity-bg {
+  position: relative;
+  z-index: 0;
+}
+.opacity-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: linear-gradient(to bottom right, #4a5759, #606c38);
+  box-shadow: -4px 4px 16px rgba(0,0,0,0.13);
+  opacity: 0.2; /* Adjust this for your desired opacity */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: inherit; /* If you want rounded corners */
+}
+
+.upper-layer {
+/* Setting the size of the upper layer to 80% of the screen size*/
+/* the alpha value controls the transparency*/
+  background: rgba( 255, 255, 255, 0.3 );
+
+  /* This controls the blurring effect*/
+  backdrop-filter: blur( 7.5px );
+  -webkit-backdrop-filter: blur( 7.5px );
+
+/*Adding the shadow*/
+  box-shadow: 0 8px 32px 0 rgba( 0, 0, 0, 0.2 );
+
+/* Adding our borders*/
+  /* border-radius: 10px; */
+  border: 1px solid rgba( 255, 255, 255, 0.18 );
+  z-index: 4;
 }

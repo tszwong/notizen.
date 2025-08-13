@@ -1,6 +1,6 @@
 // notesFirestore.ts
 
-import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, setDoc, getDocs, updateDoc, doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { getFirestore } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -177,4 +177,17 @@ export async function deleteExpiredAISummaries(userId: string) {
 export async function deleteAISummary(userId: string, summaryId: string): Promise<void> {
   const summaryRef = doc(db, 'users', userId, 'aiSummaries', summaryId);
   await deleteDoc(summaryRef);
+}
+
+// Update user statistics (e.g., note count, to-do lists)
+export async function updateUserStats(userId: string, updates: any) {
+  const statsRef = doc(db, 'users', userId, 'stats', 'main');
+  await setDoc(statsRef, updates, { merge: true });
+}
+
+// Get user statistics
+export async function getUserStats(userId: string) {
+  const statsRef = doc(db, 'users', userId, 'stats', 'main');
+  const snap = await getDoc(statsRef);
+  return snap.exists() ? snap.data() : null;
 }

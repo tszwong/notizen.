@@ -5,11 +5,13 @@ import { useAuth } from './auth/AuthProvider';
 import type { AISummary } from '../utils/notesFirestore';
 import { getUserAISummaries, deleteExpiredAISummaries, deleteAISummary } from '../utils/notesFirestore';
 
-import SmartToyIcon from '@mui/icons-material/SmartToy';
+import LiquidGlass from 'liquid-glass-react'
+
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import ArrowBackIosNewOutlinedIcon from '@mui/icons-material/ArrowBackIosNewOutlined';
+import ArrowForwardIosOutlinedIcon from '@mui/icons-material/ArrowForwardIosOutlined';
 
 export default function AISummaryDisplay({ noteId }: { noteId: string | null }) {
     const { user } = useAuth();
@@ -17,6 +19,10 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
     const [summaries, setSummaries] = useState<AISummary[]>([]);
     const [loading, setLoading] = useState(false);
     const summariesEndRef = useRef<HTMLDivElement | null>(null);
+
+    const cleanFont = {
+        fontFamily: "'Nunito Sans', sans-serif",
+    };
 
     // Load summaries when component mounts or opens
     useEffect(() => {
@@ -106,11 +112,11 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                 <button
                     onClick={() => setIsOpen(!isOpen)}
                     style={{
-                        backgroundColor: '#606c38',
-                        color: 'white',
+                        backgroundColor: '#f7b801',
+                        color: '#000',
                         border: 'none',
                         borderRadius: isOpen ? '8px 0 0 8px' : '8px 0 0 8px',
-                        padding: '12px 8px 12px 16px',
+                        padding: '12px 20px 12px 16px',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -123,13 +129,13 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <SmartToyIcon style={{ fontSize: '18px' }} />
-                        <span>AI Logs</span>
+                        <AutoAwesomeIcon style={{ fontSize: '18px' }} />
+                        <span>Summary Logs</span>
                     </div>
                     {isOpen ? (
-                        <KeyboardArrowDownIcon style={{ fontSize: '16px' }} />
+                        <ArrowForwardIosOutlinedIcon style={{ fontSize: '16px' }} />
                     ) : (
-                        <KeyboardArrowUpIcon style={{ fontSize: '16px' }} />
+                        <ArrowBackIosNewOutlinedIcon style={{ fontSize: '16px' }} />
                     )}
                 </button>
             </motion.div>
@@ -138,48 +144,58 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ x: 300, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 300, opacity: 0 }}
+                        initial={{ y: 300, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 300, opacity: 0 }}
                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                         style={{
                             position: 'fixed',
-                            top: '0',
-                            right: '0',
-                            width: '320px',
-                            height: '100vh',
-                            backgroundColor: '#f8f9fa',
-                            borderLeft: '1px solid #e0e0e0',
+                            bottom: '0px',
+                            right: '0px',
+                            width: '340px',
+                            maxHeight: '60vh',
+                            backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                            borderRadius: '25px',
                             zIndex: 999,
                             display: 'flex',
                             flexDirection: 'column',
-                            boxShadow: '-4px 0 12px rgba(0,0,0,0.1)',
+                            boxShadow: '-4px 4px 16px rgba(0,0,0,0.13)',
+                            overflow: 'hidden',
+                            backdropFilter: 'blur(8px)',
+                            WebkitBackdropFilter: 'blur(8px)',
                         }}
                     >
                         {/* Header */}
                         <div
                             style={{
-                                padding: '20px',
-                                backgroundColor: '#606c38',
-                                color: 'white',
+                                padding: '12px 0px',
+                                backgroundColor: 'rgb(255,255,255,0.1)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
+                                borderBottom: 'none',
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <SmartToyIcon />
-                                <h3 style={{ margin: 0, fontSize: '16px' }}>AI Summary Logs</h3>
+                            <div 
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '25px',
+                                    marginLeft: '20px'
+                                }}
+                            >
+                                <h3 style={{ margin: 0, marginLeft: '8px', fontSize: '16px', color: '#000', ...cleanFont, fontWeight: '700' }}>Summaries</h3>
                             </div>
                             <button
                                 onClick={() => setIsOpen(false)}
                                 style={{
                                     backgroundColor: 'transparent',
                                     border: 'none',
-                                    color: 'white',
+                                    color: '#000',
                                     cursor: 'pointer',
                                     padding: '4px',
                                     borderRadius: '4px',
+                                    marginRight: '20px',
                                 }}
                             >
                                 <CloseIcon style={{ fontSize: '20px' }} />
@@ -194,8 +210,23 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                 overflowY: 'auto',
                                 display: 'flex',
                                 flexDirection: 'column',
+                                position: 'relative',
                             }}
                         >
+                            {/* Background gradient with opacity */}
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    zIndex: 0,
+                                    pointerEvents: 'none',
+                                    backgroundImage: "linear-gradient(to left top, #fefae0, #fdf8dc, #fcf5d9, #fcf3d5, #fbf0d2, #faebc7, #f9e7bc, #f8e2b1, #f7d99c, #f6d088, #f6c774, #f6bd60)",
+                                    opacity: 0,
+                                }}
+                            />
+                            {/* Content goes here */}
+                            
+                            <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}></div>
                             {loading ? (
                                 <div
                                     style={{
@@ -220,11 +251,10 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                         padding: '20px',
                                     }}
                                 >
-                                    No AI summaries yet.<br />
-                                    Create your first summary to see it here!
+                                    No summaries are found.<br />
                                 </div>
                             ) : (
-                                <div style={{ padding: '16px 0', flex: 1 }}>
+                                <div style={{ padding: '20px 10px', flex: 1 }}>
                                     {filteredSummaries.map((summary, index) => (
                                         <motion.div
                                             key={summary.id}
@@ -234,12 +264,14 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                             style={{
                                                 marginBottom: '16px',
                                                 padding: '16px',
-                                                backgroundColor: 'white',
+                                                backgroundColor: 'rgb(231, 236, 239, 0.1)',
                                                 marginLeft: '16px',
                                                 marginRight: '16px',
-                                                borderRadius: '8px',
+                                                borderRadius: '25px',
                                                 border: '1px solid #e0e0e0',
                                                 position: 'relative',
+                                                backdropFilter: 'blur(1px)',
+                                                WebkitBackdropFilter: 'blur(1px)',
                                             }}
                                         >
                                             {/* Header */}
@@ -291,6 +323,7 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
 
                                             {/* Summary Content */}
                                             <div
+                                                className="summary-content"
                                                 style={{
                                                     fontSize: '13px',
                                                     lineHeight: '1.4',
@@ -305,7 +338,7 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                             <div
                                                 style={{
                                                     marginTop: '8px',
-                                                    fontSize: '11px',
+                                                    fontSize: '10px',
                                                     color: '#888',
                                                     fontStyle: 'italic',
                                                 }}
