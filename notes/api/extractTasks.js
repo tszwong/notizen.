@@ -1,11 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
-import { getFirestore } from "firebase-admin/firestore";
-import { initializeApp, applicationDefault } from "firebase-admin/app";
 
-if (!getFirestore.apps?.length) {
-  initializeApp({ credential: applicationDefault() });
-}
-const db = getFirestore();
+// import { getFirestore } from "firebase-admin/firestore";
+// import { initializeApp, applicationDefault } from "firebase-admin/app";
+
+// if (!getFirestore.apps?.length) {
+//   initializeApp({ credential: applicationDefault() });
+// }
+// const db = getFirestore();
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GOOGLE_STUDIO_API_KEY,
@@ -120,21 +121,21 @@ export default async function handler(req, res) {
             });
         }
 
-        // After parsing tasks:
-        // Save to Firestore if userId is provided
-        if (userId) {
-            const expirationDate = new Date();
-            expirationDate.setDate(expirationDate.getDate() + 3);
-            await db.collection('users').doc(userId).collection('aiTasks').add({
-                userId,
-                noteId: noteId || null,
-                noteTitle: noteTitle || '',
-                originalContent: cleanContent,
-                tasks,
-                createdAt: new Date(),
-                expiresAt: expirationDate,
-            });
-        }
+        // // After parsing tasks:
+        // // Save to Firestore if userId is provided
+        // if (userId) {
+        //     const expirationDate = new Date();
+        //     expirationDate.setDate(expirationDate.getDate() + 3);
+        //     await db.collection('users').doc(userId).collection('aiTasks').add({
+        //         userId,
+        //         noteId: noteId || null,
+        //         noteTitle: noteTitle || '',
+        //         originalContent: cleanContent,
+        //         tasks,
+        //         createdAt: new Date(),
+        //         expiresAt: expirationDate,
+        //     });
+        // }
 
         res.json({
             success: true,
