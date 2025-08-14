@@ -2,22 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useNavigate } from "react-router-dom";
 
-import { getUserToDoLists, createToDoList, updateToDoList, deleteToDoList, getUserStats, updateUserStats } from '../utils/notesFirestore';
-import type { ToDoListData, ChecklistItem } from '../types/todo';
+import { getUserToDoLists, createToDoList, updateToDoList, deleteToDoList, getUserStats, updateUserStats, createUserTag, getUserTags, deleteUserTag } from '../utils/notesFirestore';
+import type { ToDoListData, ChecklistItem, Tag } from '../types/todo';
 import TodoList from '../components/ToDoList';
 import CalendarHeatMap from '../components/CalendarHeatMap';
 import PressableButton from '../components/PressableButton';
 import { getPriorityCompletionData } from '../utils/GetPrioCompletionStats';
 import { getCurrentStreak, getActivityData } from '../utils/activityTracker';
-
-// @ts-ignore
-import yacht_img from '../assets/yacht.jpg';
-// @ts-ignore
-import snow_mountain from '../assets/snow_mountains.jpg';
-// @ts-ignore
-import beach from '../assets/beach.jpg';
-// @ts-ignore
-import forest from '../assets/forest.jpg';
 
 import { Tooltip as ReactTooltip } from 'react-tooltip';
 import { Bar } from 'react-chartjs-2';
@@ -25,6 +16,8 @@ import { Bar } from 'react-chartjs-2';
 // MUI imports
 import { PieChart } from '@mui/x-charts/PieChart';
 import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
+import InfoOutlineIcon from '@mui/icons-material/InfoOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 
 import {
     Calendar,
@@ -83,6 +76,11 @@ const Dashboard = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState(250);
     const [currentStreak, setCurrentStreak] = useState(0);
+    const [tags, setTags] = useState<Tag[]>([]);
+    const [showTagModal, setShowTagModal] = useState(false);
+    const [activeTag, setActiveTag] = useState<Tag | null>(null);
+    const [newTagName, setNewTagName] = useState('');
+    const [newTagColor, setNewTagColor] = useState('#ffafcc');
 
     const cleanFont = {
         fontFamily: "'Nunito Sans', sans-serif",
@@ -188,7 +186,13 @@ const Dashboard = () => {
         });
     }, [user]);
 
-    const displayedLists = showAllLists ? lists : lists.slice(0, 3);
+    // --- 1. TAG BUTTON LOGIC ---
+    // In renderSidebar, update the tag button onClick:
+    const filteredLists = activeView === 'all-lists' && activeTag
+        ? lists.filter(list => list.tags?.some(tag => tag.id === activeTag.id))
+        : lists;
+
+    const displayedLists = showAllLists ? filteredLists : filteredLists.slice(0, 3);
     const hasMoreLists = lists.length > 3;
 
     const handleAddList = async () => {
@@ -220,6 +224,16 @@ const Dashboard = () => {
         setLists(prev =>
             prev.map(list =>
                 list.id === listId ? { ...list, items: newItems } : list
+            )
+        );
+    };
+
+    const handleListTagsChange = async (listId: string, newTags: Tag[]) => {
+        if (!user) return;
+        await updateToDoList(user.uid, listId, { tags: newTags });
+        setLists(prev =>
+            prev.map(list =>
+                list.id === listId ? { ...list, tags: newTags } : list
             )
         );
     };
@@ -425,7 +439,7 @@ const Dashboard = () => {
                 backgroundColor: ['#d9ddbbff', '#b0c4b1', '#606c38'],
             },
             {
-                label: 'Total',
+                label: 'Total Active Tasks',
                 data: [total.low, total.medium, total.high],
                 backgroundColor: ['#bdbdbd', '#bdbdbd', '#bdbdbd'],
             },
@@ -441,6 +455,109 @@ const Dashboard = () => {
         scales: {
             y: { beginAtZero: true, ticks: { stepSize: 1 } },
         },
+    };
+
+    useEffect(() => {
+        if (!user) return;
+        getUserTags(user.uid).then(setTags);
+    }, [user]);
+
+    const TAG_COLORS = ['#ffb703', '#c1121f', '#ffafcc', '#c8b6ff', '#a2d2ff', '#219ebc', '#52b788'];
+
+    const TagModal = () => (
+        showTagModal && (
+            <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}>
+                <div className="bg-white rounded-4xl p-6 w-full max-w-md mx-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="ml-1 text-xl font-semibold text-gray-900" style={{ ...cleanFont, fontWeight: '900' }}>New Tag</h2>
+                        <button onClick={() => setShowTagModal(false)} className="p-1 hover:bg-gray-100 rounded-full">
+                            <X className="w-5 h-5 text-gray-500" style={{ cursor: 'pointer' }} />
+                        </button>
+                    </div>
+                    <div className="mb-4">
+                        {/* <label className="block text-sm font-medium text-gray-700 mb-2">Tag Name</label> */}
+                        <input
+                            type="text"
+                            value={newTagName}
+                            onChange={e => setNewTagName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter tag name..."
+                            autoFocus
+                        />
+                    </div>
+                    <div className="mb-4">
+                        {/* <label className="block text-sm font-medium text-gray-700 mb-2">Tag Color</label> */}
+                        <div className="flex gap-2 flex-wrap ml-1">
+                            {TAG_COLORS.map(color => (
+                                <button
+                                    key={color}
+                                    type="button"
+                                    className={`w-6 h-6 rounded-lg border-2 ${newTagColor === color ? 'border-blue-500' : 'border-gray-300'}`}
+                                    style={{ backgroundColor: color }}
+                                    onClick={() => setNewTagColor(color)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex gap-3 justify-end mt-3">
+                        <button
+                            onClick={() => {
+                                setShowTagModal(false);
+                                setNewTagName('');
+                                setNewTagColor(TAG_COLORS[0]);
+                            }}
+                            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-3xl hover:bg-gray-50"
+                            style={{ cursor: 'pointer' }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleCreateTag}
+                            disabled={!newTagName.trim()}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-3xl hover:bg-blue-700 disabled:opacity-50"
+                            style={{ cursor: 'pointer' }}
+                        >
+                            Create
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    );
+
+    const handleCreateTag = async () => {
+        if (!user || !newTagName.trim()) return;
+        try {
+            const tag = await createUserTag(user.uid, { name: newTagName.trim(), color: newTagColor });
+            setTags(prev => [...prev, tag]);
+            setShowTagModal(false);
+            setNewTagName('');
+            setNewTagColor(TAG_COLORS[0]);
+        } catch (error) {
+            console.error('Error creating tag:', error);
+        }
+    };
+
+    // Replace your handleRemoveTag with this:
+    const handleRemoveTag = async (tagId: string) => {
+        if (!user) return;
+        // Remove tag from user's tags in Firestore
+        await deleteUserTag(user.uid, tagId);
+        // Remove tag from local state
+        setTags(prev => prev.filter(tag => tag.id !== tagId));
+        // Remove tag from all lists that use it
+        const updatedLists = lists.map(list => {
+            if (list.tags?.some(tag => tag.id === tagId)) {
+                const newTags = (list.tags || []).filter(tag => tag.id !== tagId);
+                updateToDoList(user.uid, list.id, { tags: newTags });
+                return { ...list, tags: newTags };
+            }
+            return list;
+        });
+        setLists(updatedLists);
+        // If the removed tag was the active filter, clear it
+        if (activeTag?.id === tagId) setActiveTag(null);
     };
 
     const renderSidebar = () => (
@@ -668,18 +785,49 @@ const Dashboard = () => {
                 </div>
 
                 {/* Tags Section */}
-                <div className="mb-6">
+                <div className="mb-6 pt-8 border-t border-gray-300">
                     <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
                         TAGS
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                            Tag 1
-                        </span>
-                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
-                            Tag 2
-                        </span>
-                        <button className="px-2 py-1 border border-dashed border-gray-300 text-gray-500 text-xs rounded-full hover:border-gray-400">
+                        {tags.map(tag => (
+                            <div
+                                key={tag.id}
+                                className="relative group"
+                            >
+                                <button
+                                    className={`px-2 py-1 text-xs rounded-full border ${activeTag?.id === tag.id ? 'border-blue-500' : 'border-gray-300'}`}
+                                    style={{ backgroundColor: tag.color, color: '#232323' }}
+                                    onClick={() => {
+                                        if (activeTag?.id === tag.id) {
+                                            setActiveTag(null);
+                                            setActiveView('all-lists');
+                                        } else {
+                                            setActiveTag(tag);
+                                            setActiveView('all-lists');
+                                        }
+                                    }}
+                                >
+                                    {tag.name}
+                                </button>
+                                {/* Remove icon, only visible on hover */}
+                                <button
+                                    className="absolute -top-2 -right-1 rounded-full pt-0 group-hover:block hidden bg-transparent"
+                                    style={{ border: 'none', zIndex: 10 }}
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        handleRemoveTag(tag.id);
+                                    }}
+                                    title="Remove tag"
+                                >
+                                    <RemoveCircleOutlineIcon fontSize="small" style={{ color: 'black', fontSize: '16px' }} />
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            className="px-2 py-1 border border-dashed border-gray-300 text-gray-500 text-xs rounded-full hover:border-gray-400"
+                            onClick={() => setShowTagModal(true)}
+                        >
                             + Add Tag
                         </button>
                     </div>
@@ -736,7 +884,21 @@ const Dashboard = () => {
                                     {activeView === 'calendar' && 'Calendar'}
                                     {activeView === 'overview' && 'Overview'}
                                     {activeView === 'list' && selectedList?.name}
-                                    {activeView === 'all-lists' && 'All Lists'}
+                                    {activeView === 'all-lists' && (
+                                        activeTag
+                                            ? (
+                                                <span className="inline-flex items-center gap-2">
+                                                    <span
+                                                        className="px-2 py-1 text-base rounded-full border border-blue-500"
+                                                        style={{ backgroundColor: activeTag.color, color: '#232323' }}
+                                                    >
+                                                        {activeTag.name}
+                                                    </span>
+                                                    <span className="ml-2 text-lg font-normal text-gray-500">Lists</span>
+                                                </span>
+                                            )
+                                            : 'All Lists'
+                                    )}
                                     {activeView === 'settings' && 'Settings'}
                                 </h1>
                                 {activeView === 'today' && (
@@ -822,7 +984,18 @@ const Dashboard = () => {
                             {stats && (
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="p-6 rounded-3xl col-span-2 row-span-2 flex flex-col upper-layer">
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Task Priority Distribution</h3>
+                                        <h3
+                                            className="text-lg font-semibold text-gray-900 mb-2"
+                                            data-tooltip-id="priority-dist-tooltip"
+                                            data-tooltip-content="Includes tasks from active and inactive lists"
+                                        >
+                                            Task Priority Distribution (All Time)
+                                        </h3>
+                                        <ReactTooltip
+                                            id="priority-dist-tooltip"
+                                            place="top"
+                                            style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, maxWidth: 220 }}
+                                        />
                                         <div ref={containerRef} style={{ width: '100%', maxWidth: 1050, margin: '0 auto' }}>
                                             <PieChart
                                                 series={[
@@ -865,7 +1038,18 @@ const Dashboard = () => {
                                         className="p-6 rounded-3xl flex flex-col items-center upper-layer"
                                         style={{ minHeight: 250, maxHeight: 350, overflow: 'hidden' }}
                                     >
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-2 self-start">Task Completion</h3>
+                                        <h3
+                                            className="text-lg font-semibold text-gray-900 mb-2 self-start"
+                                            data-tooltip-id="task-completion-tooltip"
+                                            data-tooltip-content="Includes tasks from active and inactive lists"
+                                        >
+                                            Task Completion
+                                        </h3>
+                                        <ReactTooltip
+                                            id="task-completion-tooltip"
+                                            place="top"
+                                            style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, maxWidth: 220 }}
+                                        />
                                         <ul className="ml-3 mb-0 self-start" style={{ fontSize: 13, }}>
                                             <li>
                                                 Created: {stats.taskStats?.created ?? 0}
@@ -969,7 +1153,7 @@ const Dashboard = () => {
 
                     {activeView === 'all-lists' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {lists.map((list) => (
+                            {filteredLists.map((list) => (
                                 <div key={list.id} className="upper-layer bg-white p-6 rounded-3xl border border-gray-200 hover:shadow-md transition-shadow">
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-3">
@@ -1007,7 +1191,9 @@ const Dashboard = () => {
                         <TodoList
                             title={lists.find(l => l.id === selectedListId)?.title || ''}
                             items={lists.find(l => l.id === selectedListId)?.items || []}
+                            tags={lists.find(l => l.id === selectedListId)?.tags || []}
                             onChange={items => handleListItemsChange(selectedListId, items)}
+                            onTagsChange={tags => handleListTagsChange(selectedListId, tags)}
                             onDelete={() => {
                                 const list = lists.find(l => l.id === selectedListId);
                                 setListToDelete({ id: selectedListId, title: list?.title || '' });
@@ -1055,35 +1241,36 @@ const Dashboard = () => {
             style={{ height: '100vh', overflow: 'hidden' }}
         >
             <div
-            style={{
-                position: 'absolute',
-                inset: 0,
-                zIndex: 0,
-                backgroundImage: 'linear-gradient(to right top, #e9edc9, #dde6c4, #d2dec0, #c7d7bb, #bdcfb7, #b1c4ab, #a4b99f, #98ae93, #889d7c, #798d65, #6c7c4e, #606c38)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                filter: 'blur(18px)',
-                WebkitFilter: 'blur(18px)',
-                pointerEvents: 'none',
-                opacity: 0.5, 
-            }}
-            />
-            <div className="flex w-full relative z-10">
-            {renderSidebar()}
-            {renderMainContent()}
-            <NewListModal />
-            <DeleteListModal
-                open={showDeleteModal}
-                listTitle={listToDelete?.title || ''}
-                onCancel={() => setShowDeleteModal(false)}
-                onConfirm={async () => {
-                if (listToDelete) {
-                    await handleDeleteList(listToDelete.id);
-                    setShowDeleteModal(false);
-                    setListToDelete(null);
-                }
+                style={{
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 0,
+                    backgroundImage: 'linear-gradient(to right top, #e9edc9, #dde6c4, #d2dec0, #c7d7bb, #bdcfb7, #b1c4ab, #a4b99f, #98ae93, #889d7c, #798d65, #6c7c4e, #606c38)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    filter: 'blur(18px)',
+                    WebkitFilter: 'blur(18px)',
+                    pointerEvents: 'none',
+                    opacity: 0.5,
                 }}
             />
+            <div className="flex w-full relative z-10">
+                {renderSidebar()}
+                {renderMainContent()}
+                <NewListModal />
+                <DeleteListModal
+                    open={showDeleteModal}
+                    listTitle={listToDelete?.title || ''}
+                    onCancel={() => setShowDeleteModal(false)}
+                    onConfirm={async () => {
+                        if (listToDelete) {
+                            await handleDeleteList(listToDelete.id);
+                            setShowDeleteModal(false);
+                            setListToDelete(null);
+                        }
+                    }}
+                />
+                <TagModal />
             </div>
         </div>
     );

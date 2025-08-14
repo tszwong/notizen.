@@ -8,7 +8,7 @@ import CalendarHeatMap from "../components/CalendarHeatMap";
 import LogoutButton from "../components/LogoutButton";
 import PressableButton from '../components/PressableButton';
 import TimeDisplay from '../components/TimeDisplay';
-import AISummaryDisplay from '../components/AISummaryDisplay';
+import AISummaryDisplay from '../components/AIResponseDisplay';
 
 import AccessAlarmIcon from '@mui/icons-material/AccessAlarm';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';

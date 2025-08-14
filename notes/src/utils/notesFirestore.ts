@@ -4,6 +4,7 @@ import { collection, addDoc, serverTimestamp, query, where, setDoc, getDocs, upd
 import { getFirestore } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { db } from '../firebase';
+import { Tag } from "../types/todo";
 
 export interface Note {
   id?: string;
@@ -25,6 +26,7 @@ export interface ToDoListData {
   id?: string;
   title: string;
   items: ChecklistItem[];
+  tags?: Tag[];
 }
 
 export interface AISummary {
@@ -34,6 +36,17 @@ export interface AISummary {
   noteTitle: string;
   originalContent: string;
   summaryContent: string;
+  createdAt?: any;
+  expiresAt?: any;
+}
+
+export interface AITaskExtraction {
+  id?: string;
+  userId: string;
+  noteId: string | null;
+  noteTitle: string;
+  originalContent: string;
+  tasks: any[]; // or ChecklistItem[] if you want to type it
   createdAt?: any;
   expiresAt?: any;
 }
@@ -190,4 +203,78 @@ export async function getUserStats(userId: string) {
   const statsRef = doc(db, 'users', userId, 'stats', 'main');
   const snap = await getDoc(statsRef);
   return snap.exists() ? snap.data() : null;
+}
+
+// Define the Tag interface
+export const getUserTags = async (uid: string): Promise<Tag[]> => {
+  const tagCol = collection(db, "users", uid, "tags");
+  const snap = await getDocs(tagCol);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tag));
+};
+export const createUserTag = async (uid: string, tag: Omit<Tag, "id">) => {
+  const tagCol = collection(db, "users", uid, "tags");
+  const docRef = await addDoc(tagCol, tag);
+  return { id: docRef.id, ...tag };
+};
+
+export async function deleteUserTag(uid: string, tagId: string) {
+  const tagRef = doc(db, "users", uid, "tags", tagId);
+  await deleteDoc(tagRef);
+}
+
+
+export async function createAITaskExtraction(
+  userId: string,
+  noteId: string | null,
+  noteTitle: string,
+  originalContent: string,
+  tasks: any[]
+) {
+  const expirationDate = new Date();
+  expirationDate.setDate(expirationDate.getDate() + 3); // 3 days from now
+
+  return await addDoc(collection(db, 'users', userId, 'aiTasks'), {
+    userId,
+    noteId,
+    noteTitle,
+    originalContent,
+    tasks,
+    createdAt: serverTimestamp(),
+    expiresAt: expirationDate,
+  });
+}
+
+export async function getUserAITaskExtractions(userId: string): Promise<AITaskExtraction[]> {
+  const now = new Date();
+  const q = query(
+    collection(db, 'users', userId, 'aiTasks'),
+    where('expiresAt', '>', now)
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() } as AITaskExtraction))
+    .sort((a, b) => {
+      const aTime = a.createdAt?.toDate?.() || new Date(0);
+      const bTime = b.createdAt?.toDate?.() || new Date(0);
+      return aTime.getTime() - bTime.getTime();
+    });
+}
+
+// Delete a specific AI task extraction
+export async function deleteAITaskExtraction(userId: string, extractionId: string): Promise<void> {
+  const extractionRef = doc(db, 'users', userId, 'aiTasks', extractionId);
+  await deleteDoc(extractionRef);
+}
+
+// Delete expired AI task extractions
+export async function deleteExpiredAITaskExtractions(userId: string) {
+  const now = new Date();
+  const q = query(
+    collection(db, 'users', userId, 'aiTasks'),
+    where('expiresAt', '<=', now)
+  );
+  const querySnapshot = await getDocs(q);
+  const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+  await Promise.all(deletePromises);
+  return querySnapshot.docs.length;
 }

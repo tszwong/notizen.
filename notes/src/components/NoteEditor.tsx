@@ -29,6 +29,8 @@ import FileDownloadDoneIcon from '@mui/icons-material/FileDownloadDone';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CircularProgress from '@mui/material/CircularProgress';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 //@ts-ignore
 import { BlockMath } from 'react-katex';
@@ -68,10 +70,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
   const [lineCount, setLineCount] = useState(0);
   const [highlightedLatexIdx, setHighlightedLatexIdx] = useState<number | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [extractingTasks, setExtractingTasks] = useState(false);
+  const [highlightMenuAnchor, setHighlightMenuAnchor] = useState<null | HTMLElement>(null);
 
   const cleanFont = {
-        fontFamily: "'Nunito Sans', sans-serif",
-    };
+    fontFamily: "'Nunito Sans', sans-serif",
+  };
 
   // Comprehensive toolbar configuration
   const modules = {
@@ -83,8 +88,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
       [{ 'color': [] }],
       [{ 'background': [] }],
       ['blockquote', 'code-block'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      [{ 'indent': '-1' }, { 'indent': '+1' }],
       [{ 'align': [] }],
       ['link', 'image', 'video'],
       ['clean']
@@ -92,7 +97,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
 
     clipboard: {
       matchVisual: false,
-    }, 
+    },
     history: {
       delay: 1000,
       maxStack: 2000,
@@ -100,7 +105,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
     },
     imageResize: {
       parchment: Quill.import('parchment'),
-      modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]
+      modules: ['Resize', 'DisplaySize', 'Toolbar']
     }
   };
 
@@ -488,6 +493,101 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
     }
   }, [idle]);
 
+  // --- AI Task Extraction ---
+  const handleExtractTasks = async () => {
+    if (!user || !content.trim()) {
+      alert('Please add some content before extracting tasks.');
+      return;
+    }
+    setExtractingTasks(true);
+    setAnchorEl(null);
+    try {
+      const response = await fetch('/api/extractTasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to extract tasks');
+      }
+      if (data.tasks && data.tasks.length > 0) {
+        alert(
+          'Extracted tasks:\n' +
+            data.tasks.map((t: any, i: number) =>
+              typeof t === 'string'
+                ? `${i + 1}. ${t}`
+                : `${i + 1}. ${t.task || JSON.stringify(t)}`
+            ).join('\n')
+        );
+        // Optionally: Show a modal to let user add tasks to a todo list
+      } else {
+        alert('No actionable tasks found.');
+      }
+    } catch (error) {
+      console.error('Error extracting tasks:', error);
+      alert('Failed to extract tasks. Please try again.');
+    } finally {
+      setExtractingTasks(false);
+    }
+  };
+
+  // --- Menu handlers ---
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleMenuClose = () => setAnchorEl(null);
+
+  // --- Highlighted Text AI Actions ---
+  const handleHighlightMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setHighlightMenuAnchor(event.currentTarget);
+  };
+  const handleHighlightMenuClose = () => setHighlightMenuAnchor(null);
+
+  const handleSummarizeSelectedText = async () => {
+    handleHighlightMenuClose();
+    await summarizeSelectedText();
+  };
+
+  const handleExtractTasksFromSelectedText = async () => {
+    handleHighlightMenuClose();
+    if (!selectedText || selectedText.length > 30000) {
+      alert('Selected text is empty or exceeds the input limit.');
+      return;
+    }
+    setExtractingTasks(true);
+    try {
+      const response = await fetch('/api/extractTasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: selectedText }),
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to extract tasks');
+      }
+      if (data.tasks && data.tasks.length > 0) {
+        alert(
+          'Extracted tasks:\n' +
+            data.tasks.map((t: any, i: number) =>
+              typeof t === 'string'
+                ? `${i + 1}. ${t}`
+                : `${i + 1}. ${t.task || JSON.stringify(t)}`
+            ).join('\n')
+        );
+      } else {
+        alert('No actionable tasks found.');
+      }
+    } catch (error) {
+      console.error('Error extracting tasks:', error);
+      alert('Failed to extract tasks. Please try again.');
+    } finally {
+      setExtractingTasks(false);
+      setSelectedText('');
+      setButtonPosition(null);
+    }
+  };
+
   return (
     <div className={`note-editor-container ${className}`} style={{ gap: '2rem' }}>
       {/* Green transition overlay with sliding "Deleting..." text */}
@@ -582,7 +682,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
                 color: '#232323',
               }}
             />
-            
+
             <PressableButton
               onClick={handleSpeech}
               className="nbg-button-corner-anim"
@@ -606,17 +706,16 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
               }}
             >
               <span className="nbg-corner-anim-span"></span>
-              <span className="nbg-button-content">{listening ? <PauseIcon /> : <RecordVoiceOverIcon />}</span> 
+              <span className="nbg-button-content">{listening ? <PauseIcon /> : <RecordVoiceOverIcon />}</span>
             </PressableButton>
-          
+
             <PressableButton
-              onClick={handleAISummary}
+              onClick={handleMenuClick}
               className="nbg-button-corner-anim"
-              aria-label={summarizing ? 'Summarizing content...' : 'Summarize with AI'}
+              aria-label="AI Features"
               data-tooltip-id="ai-summary-tooltip"
-              data-tooltip-content={summarizing ? 'Summarizing Content...' : 'Summarize with AI'}
+              data-tooltip-content="AI Features"
               style={{
-                // background: 'rgba(255,255,255,0.7)',
                 color: '#7A6C4D',
                 fontWeight: 700,
                 minWidth: 48,
@@ -629,20 +728,42 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
                 fontSize: '1.3rem',
                 border: 'none',
               }}
-              disabled={summarizing} // Disable the button while summarizing
+              disabled={summarizing || extractingTasks}
             >
               <span className="nbg-corner-anim-span"></span>
               <span className="nbg-button-content">
-                {summarizing ? (
-                  <CircularProgress size={24} style={{ color: '#7A6C4D' }} /> // Show spinner when loading
+                {summarizing || extractingTasks ? (
+                  <CircularProgress size={24} style={{ color: '#7A6C4D' }} />
                 ) : showCheckIcon ? (
-                  <DoneIcon /> // Show check icon for 2 seconds
+                  <DoneIcon />
                 ) : (
-                  <AutoAwesomeIcon /> // Default icon
+                  <AutoAwesomeIcon />
                 )}
               </span>
             </PressableButton>
-            
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+              <MenuItem
+                onClick={() => {
+                  handleMenuClose();
+                  handleAISummary();
+                }}
+                disabled={summarizing}
+              >
+                Summarize Note
+              </MenuItem>
+              <MenuItem
+                onClick={handleExtractTasks}
+                disabled={extractingTasks}
+              >
+                Extract Tasks
+              </MenuItem>
+            </Menu>
+
             <PressableButton
               onClick={onNewNote}
               className="nbg-button-corner-anim"
@@ -664,7 +785,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
               <span className="nbg-corner-anim-span"></span>
               <span className="nbg-button-content"><AddIcon /></span>
             </PressableButton>
-            
+
             {/* <PressableButton
               onClick={downloadPDF}
               className="nbg-button-corner-anim"
@@ -689,7 +810,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
               <span className="nbg-corner-anim-span"></span>
               <span className="nbg-button-content">{downloadComplete ? <FileDownloadDoneIcon /> : <DownloadIcon />}</span>
             </PressableButton> */}
-            
+
             {noteId && (
               <PressableButton
                 onClick={handleDelete}
@@ -719,7 +840,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
           </div>
         </div>
 
-        <div style={{ }}>
+        <div style={{}}>
           <ReactQuill
             ref={quillRef}
             theme="snow"
@@ -792,11 +913,12 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
       </div>
 
       {buttonPosition && (
+        <>
         <PressableButton
-          onClick={summarizeSelectedText}
-          aria-label="Summarize Selected Text"
+          onClick={handleHighlightMenuClick}
+          aria-label="AI Actions for Selected Text"
           data-tooltip-id="summarize-selected-tooltip"
-          data-tooltip-content="Summarize Selected Text"
+          data-tooltip-content="AI Actions for Selected Text"
           style={{
             position: 'absolute',
             top: buttonPosition.y - 15,
@@ -819,7 +941,27 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
           }}
         >
           <span className="nbg-button-content"><AutoAwesomeIcon /></span>
-        </PressableButton>
+          </PressableButton>
+          <Menu
+            anchorEl={highlightMenuAnchor}
+            open={Boolean(highlightMenuAnchor)}
+            onClose={handleHighlightMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            <MenuItem
+              onClick={handleSummarizeSelectedText}
+              disabled={summarizing}
+            >
+              Summarize Selection
+            </MenuItem>
+            <MenuItem
+              onClick={handleExtractTasksFromSelectedText}
+              disabled={extractingTasks}
+            >
+              Extract Tasks from Selection
+            </MenuItem>
+          </Menu>
+        </>
       )}
 
       {idle && (
@@ -866,8 +1008,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
       <ReactTooltip id="ai-summary-tooltip" anchorSelect="[data-tooltip-id='ai-summary-tooltip']" />
       <ReactTooltip id="download-pdf-tooltip" anchorSelect="[data-tooltip-id='download-pdf-tooltip']" />
       <ReactTooltip id="delete-note-tooltip" anchorSelect="[data-tooltip-id='delete-note-tooltip']" />
-      <ReactTooltip 
-        id="summarize-selected-tooltip" anchorSelect="[data-tooltip-id='summarize-selected-tooltip']" 
+      <ReactTooltip
+        id="summarize-selected-tooltip" anchorSelect="[data-tooltip-id='summarize-selected-tooltip']"
         style={{ zIndex: 9999 }}
       />
       <ReactTooltip

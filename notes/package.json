@@ -13,6 +13,8 @@
     "@claycot/react-7-segment-display": "^1.1.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@fortawesome/fontawesome-svg-core": "^7.0.0",
+    "@fortawesome/react-fontawesome": "^0.2.3",
     "@google/genai": "^1.11.0",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.3.1",

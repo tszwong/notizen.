@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Trash2, Plus, GripVertical, Check } from "lucide-react";
-import { ChecklistItem } from "../types/todo";
-import { updateUserStats } from '../utils/notesFirestore';
+import { ChecklistItem, Tag } from "../types/todo";
 import { useAuth } from './auth/AuthProvider';
+import { updateUserStats, getUserTags } from '../utils/notesFirestore';
 import { increment as firestoreIncrement } from "firebase/firestore";
+import { Tooltip as ReactTooltip } from 'react-tooltip';
 
 interface ToDoListProps {
     title: string;
@@ -13,10 +14,12 @@ interface ToDoListProps {
     onRename?: (newTitle: string, color?: string) => void; // update signature
     color?: string;
     defaultMinimized?: boolean; // Add this
+    tags?: Tag[]; // Add this
+    onTagsChange?: (tags: Tag[]) => void; // Add this
 }
 
 const ToDoList: React.FC<ToDoListProps> = ({
-    title, items, onChange, onDelete, onRename, defaultMinimized = true, color: propColor
+    title, items, onChange, onDelete, onRename, defaultMinimized = true, color: propColor, tags, onTagsChange
 }) => {
     const { user } = useAuth();
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -36,6 +39,10 @@ const ToDoList: React.FC<ToDoListProps> = ({
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [editTask, setEditTask] = useState<{ task: string, description?: string, dueDate?: string, priority?: "high" | "medium" | "low" } | null>(null);
     const [color, setColor] = useState<string>(propColor || "#60a5fa"); // default blue
+    const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+    const [selectedTags, setSelectedTags] = useState<Tag[]>(tags || []);
+    const [showTagSelector, setShowTagSelector] = useState(false);
+    const tagSelectorRef = useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
         setRenameValue(title);
@@ -44,6 +51,31 @@ const ToDoList: React.FC<ToDoListProps> = ({
     React.useEffect(() => {
         setColor(propColor || "#60a5fa");
     }, [propColor]);
+
+    React.useEffect(() => {
+        if (!user) return;
+        // Always fetch tags fresh so new tags are included
+        getUserTags(user.uid).then(setAvailableTags);
+    }, [user, showTagSelector]);
+
+    React.useEffect(() => {
+        setSelectedTags(tags || []);
+    }, [tags]);
+
+    // Close tag selector on outside click
+    useEffect(() => {
+        if (!showTagSelector) return;
+        const handleClick = (e: MouseEvent) => {
+            if (
+                tagSelectorRef.current &&
+                !tagSelectorRef.current.contains(e.target as Node)
+            ) {
+                setShowTagSelector(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, [showTagSelector]);
 
     const handleAdd = async () => {
     console.log('handleAdd called with:', { input, dueDate, priority, description });
@@ -207,6 +239,15 @@ const ToDoList: React.FC<ToDoListProps> = ({
         }
     };
 
+    const handleTagToggle = (tag: Tag) => {
+        const newTags = selectedTags.find(t => t.id === tag.id)
+            ? selectedTags.filter(t => t.id !== tag.id)
+            : [...selectedTags, tag];
+        
+        setSelectedTags(newTags);
+        onTagsChange?.(newTags);
+    };
+
     return (
         <div className="bg-white rounded-lg todo-list-card upper-layer">
             {/* Error popup */}
@@ -311,14 +352,15 @@ const ToDoList: React.FC<ToDoListProps> = ({
             {/* Add new item form */}
             {!minimized && (
                 <div className="flex flex-col gap-3 mb-6">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                         <input
                             type="text"
                             placeholder="Add new item..."
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="upper-layer flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            style={{ borderRadius: '20px', paddingLeft: '15px' }}
                         />
                         <button
                             onClick={handleAdd}
@@ -326,36 +368,105 @@ const ToDoList: React.FC<ToDoListProps> = ({
                                 backgroundColor: '#1a659e',
                                 cursor: 'pointer',
                             }}
-                            className="px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                            className="px-4 py-3 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                         >
                             <Plus size={16} />
                         </button>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center relative">
                         <input
                             type="date"
                             value={dueDate}
                             onChange={(e) => setDueDate(e.target.value)}
-                            // className="px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            className="border border-gray-300 rounded-full h-10 w-10 px-0 py-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="border border-gray-300 rounded-full h-10 w-10 px-0 py-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent upper-layer"
+                            style={{ borderRadius: '20px' }}
                         />
                         <select
                             value={priority}
                             onChange={e => setPriority(e.target.value as "high" | "medium" | "low")}
-                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent upper-layer"
+                            style={{ borderRadius: '20px', cursor: 'pointer', }}
                         >
                             <option value="high">High Priority</option>
                             <option value="medium">Medium Priority</option>
                             <option value="low">Low Priority</option>
                         </select>
+                        <button
+                            type="button"
+                            onClick={() => setShowTagSelector(!showTagSelector)}
+                            className="px-3 py-1.5 rounded-3xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent upper-layer"
+                            style={{ cursor: 'pointer', }}
+                        >
+                            Tags ({selectedTags.length})
+                        </button>
+
+                        {/* Show selected tags next to the button */}
+                        <div className="flex gap-1 ml-2">
+                            {selectedTags.slice(0, 3).map(tag => (
+                                <span
+                                    key={tag.id}
+                                    className="px-3 py-2.5 text-xs rounded-full"
+                                    style={{ backgroundColor: tag.color, color: '#232323' }}
+                                >
+                                    {tag.name}
+                                </span>
+                            ))}
+                            {selectedTags.length > 3 && (
+                                <>
+                                    <span
+                                        className="px-4 py-0 pt-2.5 text-xs rounded-full bg-gray-200 text-gray-700 cursor-pointer"
+                                        data-tooltip-id={`tags-tooltip`}
+                                        data-tooltip-content={selectedTags.slice(3).map(tag => tag.name).join(', ')}
+                                    >
+                                        +{selectedTags.length - 3}
+                                    </span>
+                                    <ReactTooltip
+                                        id="tags-tooltip"
+                                        place="top"
+                                        style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, maxWidth: 220 }}
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        {/* Tag selector dropdown */}
+                        {showTagSelector && (
+                            <div
+                                ref={tagSelectorRef}
+                                className="absolute left-50 z-10 bg-white border border-gray-300 rounded-lg shadow-lg py-1 w-48 mt-0"
+                                style={{ top: '2.5rem' }}
+                            >
+                                <div className="max-h-32 overflow-y-auto">
+                                    {availableTags.map(tag => (
+                                        <label key={tag.id} className="flex items-center gap-2 p-1 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedTags.some(t => t.id === tag.id)}
+                                                onChange={() => handleTagToggle(tag)}
+                                                className="rounded ml-2"
+                                            />
+                                            <span
+                                                className="px-2 py-1 text-xs rounded-full"
+                                                style={{ backgroundColor: tag.color, color: '#232323' }}
+                                            >
+                                                {tag.name}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <textarea
-                        placeholder="Description (optional)"
-                        value={description}
-                        onChange={e => setDescription(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        rows={2}
-                    />
+                    <div className="flex gap-2">
+                        <textarea
+                            placeholder="Description (optional)"
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            className="upper-layer flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            style={{ borderRadius: '20px', paddingLeft: '15px' }}
+                            rows={2}
+                        />
+                    </div>
                 </div>
             )}
 
@@ -399,8 +510,9 @@ const ToDoList: React.FC<ToDoListProps> = ({
                             )}
 
                             {/* Content grid - positioned above progress bar */}
-                            <div className={`grid grid-cols-[2fr_3fr_1fr_1fr_1fr] gap-3 items-center p-3 relative z-10 ${holdingItem === item.id ? 'bg-transparent' : 'bg-gray-50'
-                                }`}>
+                            <div 
+                                className={`upper-layer grid grid-cols-[2fr_3fr_1fr_1fr_1fr] gap-3 items-center p-3 relative z-10 ${holdingItem === item.id ? 'bg-transparent' : 'bg-gray-50'}`}
+                            >
                                 {/* Task */}
                                 <div className="flex items-center gap-2 break-words whitespace-pre-wrap" style={{ minHeight: 32 }}>
                                     <input
@@ -418,13 +530,13 @@ const ToDoList: React.FC<ToDoListProps> = ({
                                 <div className="break-words whitespace-pre-wrap text-sm text-gray-500">{item.description}</div>
 
                                 {/* Priority */}
-                                <div>
+                                <div className="ml-4">
                                     {item.priority && (
                                         <span className={`text-xs font-semibold rounded px-2 py-1
-                            ${item.priority === "high" ? "bg-red-100 text-red-700" : ""}
-                            ${item.priority === "medium" ? "bg-yellow-100 text-yellow-700" : ""}
-                            ${item.priority === "low" ? "bg-green-100 text-green-700" : ""}
-                            `}>
+                                            ${item.priority === "high" ? "bg-red-100 text-red-700" : ""}
+                                            ${item.priority === "medium" ? "bg-yellow-100 text-yellow-700" : ""}
+                                            ${item.priority === "low" ? "bg-green-100 text-green-700" : ""}
+                                        `}>
                                             {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
                                         </span>
                                     )}

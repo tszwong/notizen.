@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from './auth/AuthProvider';
-import type { AISummary } from '../utils/notesFirestore';
+import type { AISummary, AITaskExtraction } from '../utils/notesFirestore';
 import { getUserAISummaries, deleteExpiredAISummaries, deleteAISummary } from '../utils/notesFirestore';
+import { getUserAITaskExtractions, deleteAITaskExtraction, deleteExpiredAITaskExtractions } from '../utils/notesFirestore';
 
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CloseIcon from '@mui/icons-material/Close';
@@ -17,6 +18,7 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
     const [summaries, setSummaries] = useState<AISummary[]>([]);
     const [loading, setLoading] = useState(false);
     const summariesEndRef = useRef<HTMLDivElement | null>(null);
+    const [taskExtractions, setTaskExtractions] = useState<AITaskExtraction[]>([]);
 
     const cleanFont = {
         fontFamily: "'Nunito Sans', sans-serif",
@@ -64,6 +66,20 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
         } catch (error) {
             console.error('Error deleting summary:', error);
         }
+    };
+
+    // Load task extractions when component mounts or opens
+    useEffect(() => {
+        if (user && isOpen) {
+            loadTaskExtractions();
+        }
+    }, [user, isOpen]);
+
+    const loadTaskExtractions = async () => {
+        if (!user) return;
+        await deleteExpiredAITaskExtractions(user.uid);
+        const userTasks = await getUserAITaskExtractions(user.uid);
+        setTaskExtractions(userTasks);
     };
 
     const formatDate = (timestamp) => {
@@ -128,7 +144,7 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <AutoAwesomeIcon style={{ fontSize: '18px' }} />
-                        <span>Summary Logs</span>
+                        <span>AI Responses</span>
                     </div>
                     {isOpen ? (
                         <ArrowForwardIosOutlinedIcon style={{ fontSize: '16px' }} />
@@ -174,15 +190,15 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                 borderBottom: 'none',
                             }}
                         >
-                            <div 
-                                style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     gap: '25px',
                                     marginLeft: '20px'
                                 }}
                             >
-                                <h3 style={{ margin: 0, marginLeft: '8px', fontSize: '16px', color: '#000', ...cleanFont, fontWeight: '700' }}>Summaries</h3>
+                                <h3 style={{ margin: 0, marginLeft: '8px', fontSize: '16px', color: '#000', ...cleanFont, fontWeight: '700' }}>Responses</h3>
                             </div>
                             <button
                                 onClick={() => setIsOpen(false)}
@@ -223,7 +239,7 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                 }}
                             />
                             {/* Content goes here */}
-                            
+
                             <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column' }}></div>
                             {loading ? (
                                 <div
@@ -348,8 +364,47 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                     <div ref={summariesEndRef} />
                                 </div>
                             )}
+                            <div style={{ padding: '20px 10px', flex: 1 }}>
+                                <h4 style={{ margin: '10px 0 6px 0', fontWeight: 700, fontSize: '15px', color: '#333' }}>Extracted Tasks</h4>
+                                {taskExtractions.length === 0 ? (
+                                    <div style={{ color: '#888', fontSize: '13px', marginBottom: 12 }}>No extracted tasks found.</div>
+                                ) : (
+                                    taskExtractions.map((extraction, idx) => (
+                                        <motion.div
+                                            key={extraction.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.1 }}
+                                            style={{
+                                                marginBottom: '16px',
+                                                padding: '12px',
+                                                backgroundColor: 'rgb(231, 236, 239, 0.1)',
+                                                borderRadius: '18px',
+                                                border: '1px solid #e0e0e0',
+                                            }}
+                                        >
+                                            <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: 4 }}>{extraction.noteTitle || 'Untitled Note'}</div>
+                                            <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                                {extraction.tasks.map((task, i) => (
+                                                    <li key={i} style={{ fontSize: '13px', marginBottom: 2 }}>
+                                                        {typeof task === 'string'
+                                                            ? task
+                                                            : `${task.task} (${task.priority})${task.dueDate ? `, due: ${task.dueDate}` : ''}${task.description ? ` - ${task.description}` : ''}`}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <div style={{ fontSize: '10px', color: '#888', marginTop: 4 }}>
+                                                {extraction.createdAt && typeof extraction.createdAt.toDate === 'function'
+                                                    ? extraction.createdAt.toDate().toLocaleString()
+                                                    : ''}
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </motion.div>
+                    
                 )}
             </AnimatePresence>
         </>
