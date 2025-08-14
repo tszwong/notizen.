@@ -24,14 +24,17 @@ export default async function handler(req, res) {
     }
 
     if (req.method !== 'POST') {
+        console.log("Request method not allowed:", req.method);
         return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
     try {
         const { content, userId, noteId, noteTitle } = req.body;
+        console.log("Received extractTasks request:", { userId, noteId, noteTitle, contentLength: content?.length });
 
         // Validate content
         if (!content || typeof content !== 'string') {
+            console.log("Invalid content received:", content);
             return res.status(400).json({
                 success: false,
                 error: "Content is required and must be a string."
@@ -40,8 +43,10 @@ export default async function handler(req, res) {
 
         // Strip HTML tags for cleaner text processing
         const cleanContent = content.replace(/<[^>]*>/g, '').trim();
+        console.log("Cleaned content length:", cleanContent.length);
 
         if (cleanContent.length === 0) {
+            console.log("Content is empty after cleaning.");
             return res.status(400).json({
                 success: false,
                 error: "Content appears to be empty after cleaning."
@@ -53,6 +58,9 @@ export default async function handler(req, res) {
         const truncatedContent = cleanContent.length > maxLength
             ? cleanContent.substring(0, maxLength) + "..."
             : cleanContent;
+        if (cleanContent.length > maxLength) {
+            console.log(`Content truncated from ${cleanContent.length} to ${maxLength} characters.`);
+        }
 
         // Prompt for Gemini
         const prompt = `
@@ -83,6 +91,8 @@ export default async function handler(req, res) {
             """
         `;
 
+        console.log("Gemini Task Extraction Prompt:\n", prompt);
+
         const result = await ai.models.generateContent({
             model: "gemini-2.0-flash-exp",
             contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -93,6 +103,7 @@ export default async function handler(req, res) {
         });
 
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        console.log("Raw AI response text:", text);
 
         // --- Robust JSON extraction and Markdown code block stripping ---
         let tasks = [];
@@ -101,18 +112,21 @@ export default async function handler(req, res) {
             // Remove Markdown code block if present
             if (cleanText.startsWith('```')) {
                 cleanText = cleanText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
+                console.log("Stripped markdown code block from AI response.");
             }
             // Try to find the first JSON array in the response
             const match = cleanText.match(/\[[\s\S]*?\]/);
             if (match) {
+                console.log("Found JSON array in AI response.");
                 tasks = JSON.parse(match[0]);
             } else {
-                // Try to parse the whole cleaned text (in case Gemini returns only the array)
+                console.log("No array match, trying to parse entire cleaned text.");
                 tasks = JSON.parse(cleanText);
             }
         } catch (err) {
             // Log the raw text for debugging
             console.error("AI raw response (for debugging):", text);
+            console.error("JSON parse error:", err);
             return res.status(200).json({
                 success: false,
                 error: "Failed to parse tasks from AI response.",
@@ -130,6 +144,7 @@ export default async function handler(req, res) {
                     typeof t.priority === 'string'
             )
         ) {
+            console.log("Validation failed for tasks array:", tasks);
             return res.status(200).json({
                 success: false,
                 error: "AI response did not return a valid array of task objects.",
@@ -137,22 +152,7 @@ export default async function handler(req, res) {
             });
         }
 
-        // // After parsing tasks:
-        // // Save to Firestore if userId is provided
-        // if (userId) {
-        //     const expirationDate = new Date();
-        //     expirationDate.setDate(expirationDate.getDate() + 3);
-        //     await db.collection('users').doc(userId).collection('aiTasks').add({
-        //         userId,
-        //         noteId: noteId || null,
-        //         noteTitle: noteTitle || '',
-        //         originalContent: cleanContent,
-        //         tasks,
-        //         createdAt: new Date(),
-        //         expiresAt: expirationDate,
-        //     });
-        // }
-
+        console.log(`Extracted ${tasks.length} tasks successfully.`);
         res.json({
             success: true,
             tasks,
