@@ -114,11 +114,13 @@ export default async function handler(req, res) {
                 cleanText = cleanText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
                 console.log("Stripped markdown code block from AI response.");
             }
-            // Try to find the first JSON array in the response
+            // Remove trailing commas before array/object close
+            cleanText = cleanText.replace(/,\s*([\]}])/g, '$1');
+
             const match = cleanText.match(/\[[\s\S]*?\]/);
             if (match) {
                 console.log("Found JSON array in AI response.");
-                tasks = JSON.parse(match[0]);
+                tasks = JSON.parse(match[0].replace(/,\s*([\]}])/g, '$1'));
             } else {
                 console.log("No array match, trying to parse entire cleaned text.");
                 tasks = JSON.parse(cleanText);
