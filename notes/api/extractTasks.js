@@ -74,6 +74,10 @@ export default async function handler(req, res) {
             - "description": a short description if available (optional)
             - "tags": an array of tag names if mentioned (optional)
 
+            Output ONLY a valid, strict JSON array of objects, with no extra text, no comments, and no Markdown code block markers. 
+            Do not include trailing commas. 
+            Do not explain your answer.
+
             Return ONLY a JSON array of objects, each matching this TypeScript interface:
             {
                 "task": string,
@@ -106,27 +110,41 @@ export default async function handler(req, res) {
         console.log("Raw AI response text:", text);
 
         // --- Robust JSON extraction and Markdown code block stripping ---
-        let tasks = [];
-        try {
-            let cleanText = text.trim();
-            // Remove Markdown code block if present
-            if (cleanText.startsWith('```')) {
-                cleanText = cleanText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
-                console.log("Stripped markdown code block from AI response.");
+        function extractFirstValidJSONArray(str) {
+            // Remove markdown code block if present
+            let s = str.trim();
+            if (s.startsWith('```')) {
+                s = s.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
             }
             // Remove trailing commas before array/object close
-            cleanText = cleanText.replace(/,\s*([\]}])/g, '$1');
+            s = s.replace(/,\s*([\]}])/g, '$1');
+            // Find the first '['
+            const start = s.indexOf('[');
+            if (start === -1) return null;
+            // Use a bracket counter to find the matching ']'
+            let depth = 0, end = -1;
+            for (let i = start; i < s.length; i++) {
+                if (s[i] === '[') depth++;
+                if (s[i] === ']') depth--;
+                if (depth === 0) {
+                    end = i;
+                    break;
+                }
+            }
+            if (end === -1) return null;
+            return s.slice(start, end + 1);
+        }
 
-            const match = cleanText.match(/\[[\s\S]*?\]/);
-            if (match) {
-                console.log("Found JSON array in AI response.");
-                tasks = JSON.parse(match[0].replace(/,\s*([\]}])/g, '$1'));
+        let tasks = [];
+        try {
+            const arrayStr = extractFirstValidJSONArray(text);
+            if (arrayStr) {
+                tasks = JSON.parse(arrayStr);
+                console.log("Parsed valid JSON array from AI response.");
             } else {
-                console.log("No array match, trying to parse entire cleaned text.");
-                tasks = JSON.parse(cleanText);
+                throw new Error("No valid JSON array found in AI response.");
             }
         } catch (err) {
-            // Log the raw text for debugging
             console.error("AI raw response (for debugging):", text);
             console.error("JSON parse error:", err);
             return res.status(200).json({
