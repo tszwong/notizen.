@@ -112,11 +112,19 @@ export default async function handler(req, res) {
             });
         }
 
-        // Validate that tasks is an array of strings
-        if (!Array.isArray(tasks) || !tasks.every(t => typeof t === 'string')) {
+        // Validate that tasks is an array of objects with at least a 'task' and 'priority' field
+        if (
+            !Array.isArray(tasks) ||
+            !tasks.every(
+                t =>
+                    typeof t === 'object' &&
+                    typeof t.task === 'string' &&
+                    typeof t.priority === 'string'
+            )
+        ) {
             return res.status(200).json({
                 success: false,
-                error: "AI response did not return a valid array of strings.",
+                error: "AI response did not return a valid array of task objects.",
                 raw: text
             });
         }
