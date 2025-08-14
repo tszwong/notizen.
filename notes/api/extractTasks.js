@@ -70,7 +70,7 @@ export default async function handler(req, res) {
             For each task, extract:
             - "task": the task name (string, required)
             - "priority": one of "low", "medium", or "high" (required, make an educated guess based on tone and context if not explicit)
-            - "dueDate": the due date in YYYY-MM-DD format if mentioned (optional)
+            - "dueDate": the due date in YYYY-MM-DD format ONLY IF a specific date is explicitly mentioned in the content (optional, do NOT guess or infer a due date)
             - "description": a short description if available (optional)
             - "tags": an array of tag names if mentioned (optional)
 
