@@ -8,7 +8,7 @@ declare global {
 }
 
 import { createNote, updateNote, getNoteById, deleteNote } from '../utils/notesFirestore';
-import { createAISummary } from '../utils/notesFirestore';
+import { createAISummary, createAITaskExtraction } from '../utils/notesFirestore';
 import { useAuth } from './auth/AuthProvider';
 import { Tooltip as ReactTooltip } from 'react-tooltip';
 import { recordActivity } from '../utils/activityTracker';
@@ -512,21 +512,20 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
         throw new Error(data.error || 'Failed to extract tasks');
       }
       if (data.tasks && data.tasks.length > 0) {
-        alert(
-          'Extracted tasks:\n' +
-            data.tasks.map((t: any, i: number) =>
-              typeof t === 'string'
-                ? `${i + 1}. ${t}`
-                : `${i + 1}. ${t.task || JSON.stringify(t)}`
-            ).join('\n')
+        await createAITaskExtraction(
+          user.uid,
+          noteId,
+          title || 'Untitled Note',
+          content,
+          data.tasks
         );
-        // Optionally: Show a modal to let user add tasks to a todo list
+        // Optionally show a snackbar or toast for feedback
       } else {
-        alert('No actionable tasks found.');
+        // Optionally show a snackbar or toast for "No actionable tasks found."
       }
     } catch (error) {
       console.error('Error extracting tasks:', error);
-      alert('Failed to extract tasks. Please try again.');
+      // Optionally show a snackbar or toast for error
     } finally {
       setExtractingTasks(false);
     }
@@ -567,20 +566,23 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
         throw new Error(data.error || 'Failed to extract tasks');
       }
       if (data.tasks && data.tasks.length > 0) {
-        alert(
-          'Extracted tasks:\n' +
-            data.tasks.map((t: any, i: number) =>
-              typeof t === 'string'
-                ? `${i + 1}. ${t}`
-                : `${i + 1}. ${t.task || JSON.stringify(t)}`
-            ).join('\n')
-        );
+        // Save to Firestore for AIResponseDisplay
+        if (user) {
+          await createAITaskExtraction(
+            user.uid,
+            noteId,
+            title || 'Untitled Note',
+            selectedText,
+            data.tasks
+          );
+        }
+        // Optionally show a snackbar or toast for feedback
       } else {
-        alert('No actionable tasks found.');
+        // Optionally show a snackbar or toast for "No actionable tasks found."
       }
     } catch (error) {
       console.error('Error extracting tasks:', error);
-      alert('Failed to extract tasks. Please try again.');
+      // Optionally show a snackbar or toast for error
     } finally {
       setExtractingTasks(false);
       setSelectedText('');
@@ -914,33 +916,33 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, title, content, onNoteC
 
       {buttonPosition && (
         <>
-        <PressableButton
-          onClick={handleHighlightMenuClick}
-          aria-label="AI Actions for Selected Text"
-          data-tooltip-id="summarize-selected-tooltip"
-          data-tooltip-content="AI Actions for Selected Text"
-          style={{
-            position: 'absolute',
-            top: buttonPosition.y - 15,
-            left: buttonPosition.x - 20,
-            background: '#606c38',
-            color: '#fefae0',
-            fontWeight: 700,
-            minWidth: 42,
-            minHeight: 40,
-            borderRadius: '30%',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.3rem',
-            border: 'none',
-            zIndex: 1000,
-            padding: 0,
-            cursor: 'pointer',
-          }}
-        >
-          <span className="nbg-button-content"><AutoAwesomeIcon /></span>
+          <PressableButton
+            onClick={handleHighlightMenuClick}
+            aria-label="AI Actions for Selected Text"
+            data-tooltip-id="summarize-selected-tooltip"
+            data-tooltip-content="AI Actions for Selected Text"
+            style={{
+              position: 'absolute',
+              top: buttonPosition.y - 15,
+              left: buttonPosition.x - 20,
+              background: '#606c38',
+              color: '#fefae0',
+              fontWeight: 700,
+              minWidth: 42,
+              minHeight: 40,
+              borderRadius: '30%',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.3rem',
+              border: 'none',
+              zIndex: 1000,
+              padding: 0,
+              cursor: 'pointer',
+            }}
+          >
+            <span className="nbg-button-content"><AutoAwesomeIcon /></span>
           </PressableButton>
           <Menu
             anchorEl={highlightMenuAnchor}

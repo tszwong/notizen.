@@ -364,7 +364,7 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                     <div ref={summariesEndRef} />
                                 </div>
                             )}
-                            <div style={{ padding: '20px 10px', flex: 1 }}>
+                            <div style={{ padding: '20px 10px', marginLeft: '30px', flex: 1 }}>
                                 <h4 style={{ margin: '10px 0 6px 0', fontWeight: 700, fontSize: '15px', color: '#333' }}>Extracted Tasks</h4>
                                 {taskExtractions.length === 0 ? (
                                     <div style={{ color: '#888', fontSize: '13px', marginBottom: 12, marginLeft: 4 }}>No extracted tasks found.</div>
