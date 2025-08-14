@@ -69,7 +69,7 @@ export default async function handler(req, res) {
       model: "gemini-2.0-flash-exp",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
-        maxOutputTokens: 250,
+        maxOutputTokens: 500,
         temperature: 0.3,
       },
     });

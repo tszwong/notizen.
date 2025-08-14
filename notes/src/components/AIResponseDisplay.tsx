@@ -5,6 +5,7 @@ import { useAuth } from './auth/AuthProvider';
 import type { AISummary, AITaskExtraction } from '../utils/notesFirestore';
 import { getUserAISummaries, deleteExpiredAISummaries, deleteAISummary } from '../utils/notesFirestore';
 import { getUserAITaskExtractions, deleteAITaskExtraction, deleteExpiredAITaskExtractions } from '../utils/notesFirestore';
+import CreateListFromExtraction from '../utils/CreateListFromExtraction';
 
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CloseIcon from '@mui/icons-material/Close';
@@ -19,6 +20,7 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
     const [loading, setLoading] = useState(false);
     const summariesEndRef = useRef<HTMLDivElement | null>(null);
     const [taskExtractions, setTaskExtractions] = useState<AITaskExtraction[]>([]);
+    const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean[]>>({});
 
     const cleanFont = {
         fontFamily: "'Nunito Sans', sans-serif",
@@ -81,6 +83,18 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
         const userTasks = await getUserAITaskExtractions(user.uid);
         setTaskExtractions(userTasks);
     };
+
+    // When taskExtractions change, initialize checkedTasks state
+    useEffect(() => {
+        const initialChecked: { [extractionId: string]: boolean[] } = {};
+        taskExtractions.forEach(extraction => {
+            const extractionId = extraction.id !== undefined ? String(extraction.id) : '';
+            initialChecked[extractionId] = Array.isArray(extraction.tasks)
+                ? extraction.tasks.map(() => false)
+                : [];
+        });
+        setCheckedTasks(initialChecked);
+    }, [taskExtractions]);
 
     const formatDate = (timestamp) => {
         if (!timestamp) return '';
@@ -268,7 +282,7 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                     No summaries are found.<br />
                                 </div>
                             ) : (
-                                <div style={{ padding: '20px 10px', flex: 1 }}>
+                                <div style={{ padding: '20px 10px', paddingBottom: '0px', flex: 1 }}>
                                     {filteredSummaries.map((summary, index) => (
                                         <motion.div
                                             key={summary.id}
@@ -364,8 +378,10 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                     <div ref={summariesEndRef} />
                                 </div>
                             )}
-                            <div style={{ padding: '20px 10px', marginLeft: '30px', flex: 1 }}>
-                                <h4 style={{ margin: '10px 0 6px 0', fontWeight: 700, fontSize: '15px', color: '#333' }}>Extracted Tasks</h4>
+
+                            {/* Extracted Tasks */}
+                            <div style={{ padding: '20px 10px', margin: '0 auto', flex: 1 }}>
+                                {/* <h4 style={{ margin: '10px 0 6px 0', fontWeight: 700, fontSize: '15px', color: '#333' }}>Extracted Tasks</h4> */}
                                 {taskExtractions.length === 0 ? (
                                     <div style={{ color: '#888', fontSize: '13px', marginBottom: 12, marginLeft: 4 }}>No extracted tasks found.</div>
                                 ) : (
@@ -376,24 +392,126 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: idx * 0.1 }}
                                             style={{
+                                                marginLeft: '16px',
+                                                marginRight: '16px',
                                                 marginBottom: '16px',
-                                                padding: '12px',
+                                                padding: '16px',
                                                 backgroundColor: 'rgb(231, 236, 239, 0.1)',
                                                 borderRadius: '18px',
                                                 border: '1px solid #e0e0e0',
                                             }}
                                         >
-                                            <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: 4 }}>{extraction.noteTitle || 'Untitled Note'}</div>
-                                            <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                            <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: 15 }}>{extraction.noteTitle || 'Untitled Note'}</div>
+                                            <ul style={{ margin: 0, paddingLeft: 12 }}>
                                                 {extraction.tasks.map((task, i) => (
-                                                    <li key={i} style={{ fontSize: '13px', marginBottom: 2 }}>
-                                                        {typeof task === 'string'
-                                                            ? task
-                                                            : `${task.task} (${task.priority})${task.dueDate ? `, due: ${task.dueDate}` : ''}${task.description ? ` - ${task.description}` : ''}`}
+                                                    <li
+                                                        key={i}
+                                                        style={{
+                                                            fontSize: '13px',
+                                                            marginBottom: 6,
+                                                            lineHeight: 1.5,
+                                                            display: 'flex',
+                                                            alignItems: 'flex-start',
+                                                            gap: 8,
+                                                        }}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            style={{ marginTop: 5, marginRight: 8 }}
+                                                            checked={checkedTasks[String(extraction.id)]?.[i] || false}
+                                                            onChange={() => {
+                                                                setCheckedTasks(prev => ({
+                                                                    ...prev,
+                                                                    [String(extraction.id)]: prev[String(extraction.id)]?.map((val, idx) =>
+                                                                        idx === i ? !val : val
+                                                                    ),
+                                                                }));
+                                                            }}
+                                                        />
+                                                        <div>
+                                                            {typeof task === 'string' ? (
+                                                                task
+                                                            ) : (
+                                                                <>
+                                                                    <span style={{ fontWeight: 500 }}>{task.task}</span>
+                                                                    {task.priority && (
+                                                                        <span
+                                                                            style={{
+                                                                                marginLeft: 6,
+                                                                                padding: '2px 8px',
+                                                                                borderRadius: '8px',
+                                                                                fontSize: '11px',
+                                                                                fontWeight: 600,
+                                                                                backgroundColor:
+                                                                                    task.priority === "high"
+                                                                                        ? "#fee2e2"
+                                                                                        : task.priority === "medium"
+                                                                                            ? "#fef9c3"
+                                                                                            : task.priority === "low"
+                                                                                                ? "#dcfce7"
+                                                                                                : "#eee",
+                                                                                color:
+                                                                                    task.priority === "high"
+                                                                                        ? "#b91c1c"
+                                                                                        : task.priority === "medium"
+                                                                                            ? "#b45309"
+                                                                                            : task.priority === "low"
+                                                                                                ? "#166534"
+                                                                                                : "#333",
+                                                                                marginRight: 4,
+                                                                            }}
+                                                                        >
+                                                                            {task.priority}
+                                                                        </span>
+                                                                    )}
+                                                                    {task.dueDate && (
+                                                                        <span style={{ color: '#7a6c4d', marginLeft: 4 }}> due: {task.dueDate}</span>
+                                                                    )}
+                                                                    {task.tags && Array.isArray(task.tags) && task.tags.length > 0 && (
+                                                                        <span style={{ marginLeft: 6 }}>
+                                                                            {task.tags.map((tag, idx) => (
+                                                                                <span
+                                                                                    key={idx}
+                                                                                    style={{
+                                                                                        background: '#f6bd60',
+                                                                                        color: '#232323',
+                                                                                        borderRadius: '8px',
+                                                                                        padding: '1px 7px',
+                                                                                        fontSize: '11px',
+                                                                                        marginRight: 4,
+                                                                                        fontWeight: 500,
+                                                                                    }}
+                                                                                >
+                                                                                    {tag}
+                                                                                </span>
+                                                                            ))}
+                                                                        </span>
+                                                                    )}
+                                                                    {task.description && (
+                                                                        <div style={{ color: '#555', fontSize: '12px', marginTop: 2, marginLeft: 2 }}>
+                                                                            {task.description}
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </li>
                                                 ))}
                                             </ul>
-                                            <div style={{ fontSize: '10px', color: '#888', marginTop: 4 }}>
+                                            {user && (
+                                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                                                    <CreateListFromExtraction
+                                                        userId={user.uid}
+                                                        extraction={{ ...extraction, id: extraction.id ?? '' }}
+                                                        checked={checkedTasks[String(extraction.id)] || []}
+                                                        setChecked={checkedArr => setCheckedTasks(prev => ({
+                                                            ...prev,
+                                                            [String(extraction.id)]: checkedArr,
+                                                        }))}
+                                                    />
+                                                </div>
+                                            )}
+                                            <div style={{ fontSize: '10px', color: '#888', marginTop: 15 }}>
                                                 {extraction.createdAt && typeof extraction.createdAt.toDate === 'function'
                                                     ? extraction.createdAt.toDate().toLocaleString()
                                                     : ''}
@@ -404,7 +522,6 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                             </div>
                         </div>
                     </motion.div>
-                    
                 )}
             </AnimatePresence>
         </>

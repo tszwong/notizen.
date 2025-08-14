@@ -74,6 +74,9 @@ export default async function handler(req, res) {
             - "description": a short description if available (optional)
             - "tags": an array of tag names if mentioned (optional)
 
+            For tags, make them as broad as possible, covering general themes or topics e.g. "Meeting", "Work", "Follow-up", "Grocery", "School", "Errand", "Entertainment".
+            For tags, try to keep under 5 tags total.
+
             Output ONLY a valid, strict JSON array of objects, with no extra text, no comments, and no Markdown code block markers. 
             Do not include trailing commas. 
             Do not explain your answer.

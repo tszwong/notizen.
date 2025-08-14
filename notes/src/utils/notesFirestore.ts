@@ -20,6 +20,8 @@ export interface ChecklistItem {
   task: string;
   completed: boolean;
   dueDate?: string;
+  priority?: 'low' | 'medium' | 'high';
+  description?: string;
 }
 
 export interface ToDoListData {
@@ -27,6 +29,7 @@ export interface ToDoListData {
   title: string;
   items: ChecklistItem[];
   tags?: Tag[];
+  color?: string;
 }
 
 export interface AISummary {
@@ -93,15 +96,19 @@ export async function deleteNote(noteId: string): Promise<void> {
 }
 
 // Create a new to-do list for a user
-export async function createToDoList(userId: string, title: string) {
-  console.log(`[createToDoList] userId: ${userId}, title: ${title}`);
-  const docRef = await addDoc(collection(db, 'users', userId, 'todoLists'), {
-    title,
-    items: [],
+export async function createToDoList(userId: string, list: ToDoListData) {
+  const docData: any = {
+    title: list.title,
+    items: list.items || [],
+    tags: list.tags || [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
-  console.log(`[createToDoList] Created list with id: ${docRef.id}`);
+  };
+  if (list.color) docData.color = list.color;
+
+  console.log('[createToDoList] docData:', docData);
+
+  const docRef = await addDoc(collection(db, 'users', userId, 'todoLists'), docData);
   return docRef;
 }
 

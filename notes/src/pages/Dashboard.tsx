@@ -7,6 +7,7 @@ import type { ToDoListData, ChecklistItem, Tag } from '../types/todo';
 import TodoList from '../components/ToDoList';
 import CalendarHeatMap from '../components/CalendarHeatMap';
 import PressableButton from '../components/PressableButton';
+import NewListModal from '../components/NewListModal';
 import { getPriorityCompletionData } from '../utils/GetPrioCompletionStats';
 import { getCurrentStreak, getActivityData } from '../utils/activityTracker';
 
@@ -195,12 +196,17 @@ const Dashboard = () => {
     const displayedLists = showAllLists ? filteredLists : filteredLists.slice(0, 3);
     const hasMoreLists = lists.length > 3;
 
+    // Handle adding a new list
     const handleAddList = async () => {
         if (!user || !newListTitle.trim()) return;
 
         setIsCreatingList(true);
         try {
-            const docRef = await createToDoList(user.uid, newListTitle.trim());
+            const docRef = await createToDoList(user.uid, {
+                title: newListTitle.trim(),
+                items: [],
+                tags: [],
+            });
             setLists(prev => [...prev, { id: docRef.id, title: newListTitle.trim(), items: [] }]);
             setNewListTitle('');
             setShowNewListModal(false);
@@ -258,75 +264,6 @@ const Dashboard = () => {
         const updatedItems = list.items.filter(item => item.id !== taskId);
         await handleListItemsChange(listId, updatedItems);
     };
-
-    // New List Modal Component
-    const NewListModal = () => (
-        showNewListModal && (
-            <div
-                className="fixed inset-0 flex items-center justify-center z-50"
-                style={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    backdropFilter: 'blur(2px)',
-                }}
-            >
-                <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2
-                            className="text-xl font-semibold text-gray-900"
-                            style={{
-                                ...cleanFont,
-                                color: 'black',
-                                fontWeight: '900'
-                            }}
-                        >
-                            New List
-                        </h2>
-                        <button
-                            onClick={() => {
-                                setShowNewListModal(false);
-                                setNewListTitle('');
-                            }}
-                            className="p-1 hover:bg-gray-100 rounded-full"
-                        >
-                            <X className="w-5 h-5 text-gray-500" />
-                        </button>
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Name
-                        </label>
-                        <input
-                            type="text"
-                            value={newListTitle}
-                            onChange={(e) => setNewListTitle(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddList()}
-                            placeholder="Enter list name..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            autoFocus
-                        />
-                    </div>
-                    <div className="flex gap-3 justify-end">
-                        <button
-                            onClick={() => {
-                                setShowNewListModal(false);
-                                setNewListTitle('');
-                            }}
-                            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleAddList}
-                            disabled={!newListTitle.trim() || isCreatingList}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isCreatingList ? 'Creating...' : 'Create'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )
-    );
 
     // Delete List Modal Component
     const DeleteListModal = ({ open, onCancel, onConfirm, listTitle }: { open: boolean, onCancel: () => void, onConfirm: () => void, listTitle: string }) => (
@@ -1257,7 +1194,17 @@ const Dashboard = () => {
             <div className="flex w-full relative z-10">
                 {renderSidebar()}
                 {renderMainContent()}
-                <NewListModal />
+                <NewListModal
+                    open={showNewListModal}
+                    value={newListTitle}
+                    isCreating={isCreatingList}
+                    onChange={setNewListTitle}
+                    onCancel={() => {
+                        setShowNewListModal(false);
+                        setNewListTitle('');
+                    }}
+                    onCreate={handleAddList}
+                />
                 <DeleteListModal
                     open={showDeleteModal}
                     listTitle={listToDelete?.title || ''}

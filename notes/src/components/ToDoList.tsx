@@ -414,7 +414,7 @@ const ToDoList: React.FC<ToDoListProps> = ({
                             {selectedTags.length > 3 && (
                                 <>
                                     <span
-                                        className="px-4 py-0 pt-2.5 text-xs rounded-full bg-gray-200 text-gray-700 cursor-pointer"
+                                        className="px-4 py-0 pt-2.5 text-xs rounded-full bg-gray-200 text-gray-700"
                                         data-tooltip-id={`tags-tooltip`}
                                         data-tooltip-content={selectedTags.slice(3).map(tag => tag.name).join(', ')}
                                     >
@@ -423,7 +423,7 @@ const ToDoList: React.FC<ToDoListProps> = ({
                                     <ReactTooltip
                                         id="tags-tooltip"
                                         place="top"
-                                        style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, maxWidth: 220 }}
+                                        style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, maxWidth: 220, zIndex: 9999 }}
                                     />
                                 </>
                             )}
