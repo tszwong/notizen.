@@ -98,7 +98,7 @@ export default async function handler(req, res) {
         console.log("Gemini Task Extraction Prompt:\n", prompt);
 
         const result = await ai.models.generateContent({
-            model: "gemini-2.0-flash-exp",
+            model: "gemini-2.5-flash",
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             config: {
                 maxOutputTokens: 256,
