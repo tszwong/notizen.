@@ -94,17 +94,25 @@ export default async function handler(req, res) {
 
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-        // Try to extract the JSON array from the response
+        // --- Robust JSON extraction and Markdown code block stripping ---
         let tasks = [];
         try {
-            // Find the first JSON array in the response
-            const match = text.match(/\[[\s\S]*?\]/);
+            let cleanText = text.trim();
+            // Remove Markdown code block if present
+            if (cleanText.startsWith('```')) {
+                cleanText = cleanText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
+            }
+            // Try to find the first JSON array in the response
+            const match = cleanText.match(/\[[\s\S]*?\]/);
             if (match) {
                 tasks = JSON.parse(match[0]);
             } else {
-                tasks = [];
+                // Try to parse the whole cleaned text (in case Gemini returns only the array)
+                tasks = JSON.parse(cleanText);
             }
         } catch (err) {
+            // Log the raw text for debugging
+            console.error("AI raw response (for debugging):", text);
             return res.status(200).json({
                 success: false,
                 error: "Failed to parse tasks from AI response.",
