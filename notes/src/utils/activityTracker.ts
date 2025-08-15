@@ -12,7 +12,7 @@ const db = getFirestore();
 // Record activity for today in Firestore
 export const recordActivity = async (user: User) => {
   if (!user) return;
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const ref = doc(db, ACTIVITY_COLLECTION, user.uid);
   const snap = await getDoc(ref);
   if (snap.exists()) {
@@ -42,7 +42,7 @@ export const getHeatmapData = async (user: User, startDate: Date, endDate: Date)
   const values: { date: string; count: number }[] = [];
   const current = new Date(startDate);
   while (current <= endDate) {
-    const dateStr = current.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(current);
     const wasActive = activityData[dateStr] || false;
     values.push({ date: dateStr, count: wasActive ? 1 : 0 });
     current.setDate(current.getDate() + 1);
@@ -73,4 +73,11 @@ export const getCurrentStreak = (activityData: { [date: string]: boolean }): num
     }
   }
   return streak;
-};
+}
+
+function getLocalDateString(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}

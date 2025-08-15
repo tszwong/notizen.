@@ -78,78 +78,91 @@ const ToDoList: React.FC<ToDoListProps> = ({
     }, [showTagSelector]);
 
     const handleAdd = async () => {
-    console.log('handleAdd called with:', { input, dueDate, priority, description });
+        console.log('handleAdd called with:', { input, dueDate, priority, description });
 
-    // Only check if task name is provided
-    if (!input.trim()) {
-        setShowError("Task name is required.");
-        return;
-    }
-
-    // Create new item with proper handling of optional fields
-    const newItem: ChecklistItem = {
-        id: Date.now().toString(),
-        task: input.trim(),
-        completed: false,
-        priority, // This will always have a value since it defaults to "medium"
-    };
-
-    // Only add dueDate if it has a value
-    if (dueDate && dueDate.trim()) {
-        newItem.dueDate = dueDate;
-    }
-
-    // Only add description if it has content after trimming
-    if (description && description.trim()) {
-        newItem.description = description.trim();
-    }
-
-    // Add the new item to the list
-    console.log('Adding new item:', newItem);
-    console.log('Current items:', items);
-    onChange([...items, newItem]);
-
-    // --- Update stats with proper structure ---
-    if (user) {
-        try {
-            await updateUserStats(user.uid, {
-                [`priorityCounts.${priority}`]: increment(1),
-                'taskStats.created': increment(1),
-            });
-            console.log('Stats updated successfully');
-        } catch (error) {
-            console.error('Error updating stats:', error);
+        // Only check if task name is provided
+        if (!input.trim()) {
+            setShowError("Task name is required.");
+            return;
         }
-    }
 
-    // Reset form fields
-    setInput("");
-    setDueDate("");
-    setPriority("medium");
-    setDescription("");
-    setShowError(null);
-};
+        // Create new item with proper handling of optional fields
+        const newItem: ChecklistItem = {
+            id: Date.now().toString(),
+            task: input.trim(),
+            completed: false,
+            priority, // This will always have a value since it defaults to "medium"
+        };
+
+        // Only add dueDate if it has a value
+        if (dueDate && dueDate.trim()) {
+            newItem.dueDate = dueDate;
+        }
+
+        // Only add description if it has content after trimming
+        if (description && description.trim()) {
+            newItem.description = description.trim();
+        }
+
+        // Add the new item to the list
+        console.log('Adding new item:', newItem);
+        console.log('Current items:', items);
+        onChange([...items, newItem]);
+
+        // --- Update stats with proper structure ---
+        if (user) {
+            try {
+                await updateUserStats(user.uid, {
+                    [`priorityCounts.${priority}`]: increment(1),
+                    'taskStats.created': increment(1),
+                });
+                console.log('Stats updated successfully');
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+
+        // Reset form fields
+        setInput("");
+        setDueDate("");
+        setPriority("medium");
+        setDescription("");
+        setShowError(null);
+    };
 
     const handleToggle = async (id: string) => {
         const item = items.find(i => i.id === id);
+        if (!item) return;
+        const wasCompleted = item.completed;
+
+        // Toggle the completed state
         onChange(
             items.map(item =>
                 item.id === id ? { ...item, completed: !item.completed } : item
             )
         );
+
         // --- Update stats ---
-        if (user && item && !item.completed) { // Only count when marking as completed
-            await updateUserStats(user.uid, {
-                'taskStats.completed': increment(1),
-            });
-            // Overdue time
-            if (item.dueDate && new Date(item.dueDate) < new Date(todayStr)) {
-                const due = new Date(item.dueDate);
-                const now = new Date();
-                const overdueHours = Math.round((now.getTime() - due.getTime()) / (1000 * 60 * 60));
+        if (user) {
+            if (!wasCompleted) {
+                // Marking as completed
                 await updateUserStats(user.uid, {
-                    priorityCounts: { [priority]: increment(1) },
-                    taskStats: { [todayStr]: { created: increment(1) } },
+                    'taskStats.completed': increment(1),
+                });
+                // Overdue time logic (only when marking as completed)
+                if (item.dueDate && new Date(item.dueDate) < new Date(todayStr)) {
+                    const due = new Date(item.dueDate);
+                    const now = new Date();
+                    const overdueHours = Math.round((now.getTime() - due.getTime()) / (1000 * 60 * 60));
+                    await updateUserStats(user.uid, {
+                        priorityCounts: { [priority]: increment(1) },
+                        taskStats: { [todayStr]: { created: increment(1) } },
+                    });
+                }
+            } else {
+                // Marking as incomplete
+                await updateUserStats(user.uid, {
+                    'taskStats.completed': increment(-1),
                 });
             }
         }
@@ -243,7 +256,7 @@ const ToDoList: React.FC<ToDoListProps> = ({
         const newTags = selectedTags.find(t => t.id === tag.id)
             ? selectedTags.filter(t => t.id !== tag.id)
             : [...selectedTags, tag];
-        
+
         setSelectedTags(newTags);
         onTagsChange?.(newTags);
     };
@@ -510,7 +523,7 @@ const ToDoList: React.FC<ToDoListProps> = ({
                             )}
 
                             {/* Content grid - positioned above progress bar */}
-                            <div 
+                            <div
                                 className={`upper-layer grid grid-cols-[2fr_3fr_1fr_1fr_1fr] gap-3 items-center p-3 relative z-10 ${holdingItem === item.id ? 'bg-transparent' : 'bg-gray-50'}`}
                             >
                                 {/* Task */}
@@ -684,4 +697,7 @@ export default ToDoList;
 // Firestore increment helper for stats updates
 function increment(amount: number) {
     return firestoreIncrement(amount);
+}
+function decrement(amount: number) {
+    return firestoreIncrement(-amount);
 }

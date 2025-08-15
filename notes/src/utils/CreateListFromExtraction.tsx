@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import NewListModal from '../components/NewListModal';
-import { createToDoList, ChecklistItem, getUserTags, createUserTag, } from '../utils/notesFirestore';
 import { Tag } from '../types/todo';
+
+import { createToDoList, ChecklistItem, getUserTags, createUserTag, updateUserStats } from '../utils/notesFirestore';
+import { increment } from "firebase/firestore";
+
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
@@ -88,6 +91,25 @@ const CreateListFromExtraction: React.FC<CreateListFromExtractionProps> = ({
                 items: selectedTasks,
                 tags: tagsToAdd,
             });
+            // --- Update user stats for created tasks and priorities ---
+            if (selectedTasks.length > 0 && userId) {
+                const prioCounts = { low: 0, medium: 0, high: 0 };
+                selectedTasks.forEach(task => {
+                    const prio = (task.priority || 'medium') as 'low' | 'medium' | 'high';
+                    prioCounts[prio]++;
+                });
+
+                const statsUpdate: any = {
+                    'taskStats.created': increment(selectedTasks.length),
+                };
+                Object.entries(prioCounts).forEach(([prio, count]) => {
+                    if (count > 0) {
+                        statsUpdate[`priorityCounts.${prio}`] = increment(count);
+                    }
+                });
+
+                await updateUserStats(userId, statsUpdate);
+            }
             setShowModal(false);
             setNewListTitle('');
             setChecked(Array(extraction.tasks.length).fill(false)); // Unselect all checkboxes

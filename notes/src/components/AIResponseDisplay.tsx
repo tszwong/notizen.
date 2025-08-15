@@ -84,6 +84,16 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
         setTaskExtractions(userTasks);
     };
 
+    const handleDeleteTaskExtraction = async (extractionId: string) => {
+        if (!user) return;
+        try {
+            await deleteAITaskExtraction(user.uid, extractionId);
+            setTaskExtractions(prev => prev.filter(e => e.id !== extractionId));
+        } catch (error) {
+            console.error('Error deleting task extraction:', error);
+        }
+    };
+
     // When taskExtractions change, initialize checkedTasks state
     useEffect(() => {
         const initialChecked: { [extractionId: string]: boolean[] } = {};
@@ -401,7 +411,33 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                                                 border: '1px solid #e0e0e0',
                                             }}
                                         >
-                                            <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: 15 }}>{extraction.noteTitle || 'Untitled Note'}</div>
+                                            {/* Add this header div */}
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'flex-start',
+                                                    marginBottom: '8px',
+                                                }}
+                                            >
+                                                <div style={{ flex: 1, marginRight: '8px', fontWeight: 600, fontSize: '13px' }}>
+                                                    {extraction.noteTitle || 'Untitled Note'}
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteTaskExtraction(extraction.id ?? '')}
+                                                    style={{
+                                                        backgroundColor: 'transparent',
+                                                        border: 'none',
+                                                        color: '#999',
+                                                        cursor: 'pointer',
+                                                        padding: '4px',
+                                                        borderRadius: '4px',
+                                                    }}
+                                                    title="Delete extracted tasks"
+                                                >
+                                                    <DeleteIcon style={{ fontSize: '16px' }} />
+                                                </button>
+                                            </div>
                                             <ul style={{ margin: 0, paddingLeft: 12 }}>
                                                 {extraction.tasks.map((task, i) => (
                                                     <li
