@@ -62,6 +62,12 @@ export default async function handler(req, res) {
             console.log(`Content truncated from ${cleanContent.length} to ${maxLength} characters.`);
         }
 
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
         // Prompt for Gemini
         const prompt = `
             You are a smart AI assistant that is an expert in task extraction and event planning.
@@ -70,7 +76,7 @@ export default async function handler(req, res) {
             For each task, extract:
             - "task": the task name (string, required)
             - "priority": one of "low", "medium", or "high" (required, make an educated guess based on tone and context if not explicit)
-            - "dueDate": the due date in YYYY-MM-DD format ONLY IF a specific date is explicitly mentioned in the content (optional, do NOT guess or infer a due date)
+            - "dueDate": the due date in YYYY-MM-DD format ONLY IF a specific date is explicitly mentioned in the content, or if a relative date (like "in 2 days", "next Monday", "in 2 weeks") is mentioned, resolve it using today's date (${todayStr}) (otherwise it is optional, do NOT guess or infer a due date if not mentioned)
             - "description": a short description if available (optional)
             - "tags": an array of tag names if mentioned (optional)
 

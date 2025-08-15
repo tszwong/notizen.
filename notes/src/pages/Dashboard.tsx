@@ -1108,10 +1108,29 @@ const Dashboard = () => {
                                             <ExternalLink className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    <p className="text-2xl font-bold text-gray-900 mb-2">{list.items.length}</p>
-                                    <p className="text-sm text-gray-500">
-                                        {list.items.length === 1 ? 'task' : 'tasks'}
+                                    <p className="text-2xl font-bold text-gray-900 mb-2">
+                                        {list.items.length} <span className="text-sm text-gray-500">
+                                            {list.items.length === 1 ? 'task' : 'tasks'}
+                                        </span>
                                     </p>
+
+                                    {list.tags && list.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {list.tags.map(tag => (
+                                                <span
+                                                    key={tag.id}
+                                                    className="px-2 py-1 text-xs rounded-full border"
+                                                    style={{
+                                                        backgroundColor: tag.color,
+                                                        color: '#232323',
+                                                        borderColor: '#e0e0e0',
+                                                    }}
+                                                >
+                                                    {tag.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             <div
