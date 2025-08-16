@@ -19,6 +19,7 @@ import { PieChart } from '@mui/x-charts/PieChart';
 import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
 import InfoOutlineIcon from '@mui/icons-material/InfoOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import CreateIcon from '@mui/icons-material/Create';
 
 import {
     Calendar,
@@ -508,9 +509,9 @@ const Dashboard = () => {
                     <PressableButton
                         onClick={() => navigate("/")}
                         className="key-effect hide-when-focus button-corner-anim"
-                        aria-label="Go Home"
-                        data-tooltip-id="home-tooltip"
-                        data-tooltip-content="Go Home"
+                        aria-label="Back to Editor"
+                        data-tooltip-id="editor-tooltip"
+                        data-tooltip-content="Back to Editor"
                         style={{
                             padding: '0.75rem',
                             color: 'white',
@@ -528,7 +529,7 @@ const Dashboard = () => {
                         }}
                     >
                         <span className="corner-anim-span"></span>
-                        <span className="button-content"><ArrowBackOutlinedIcon /></span>
+                        <span className="button-content"><CreateIcon /></span>
                     </PressableButton>
 
                     <span
@@ -788,7 +789,7 @@ const Dashboard = () => {
                 </div>
             </div> */}
 
-            <ReactTooltip id="home-tooltip" anchorSelect="[data-tooltip-id='home-tooltip']" />
+            <ReactTooltip id="editor-tooltip" anchorSelect="[data-tooltip-id='editor-tooltip']" />
         </div>
     );
 
@@ -922,7 +923,7 @@ const Dashboard = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="p-6 rounded-3xl col-span-2 row-span-2 flex flex-col upper-layer">
                                         <h3
-                                            className="text-lg font-semibold text-gray-900 mb-2"
+                                            className="text-lg font-semibold text-gray-900 mb-0"
                                             data-tooltip-id="priority-dist-tooltip"
                                             data-tooltip-content="Includes tasks from active and inactive lists"
                                         >
@@ -953,6 +954,11 @@ const Dashboard = () => {
                                                 width={size}
                                                 height={size}
                                             />
+                                            <h3
+                                                className="text-lg font-semibold text-gray-900 mb-6 mt-0"
+                                            >
+                                                Task Priority Distribution (Active Tasks)
+                                            </h3>
                                             <div className="mt-5 flex justify-center items-center w-full">
                                                 <div style={{ width: Math.max(520, Math.min(size, 850)), maxWidth: '100%', height: 300 }}>
                                                     <Bar data={barData} options={{ ...barOptions, maintainAspectRatio: false }} height={size * 0.5} />

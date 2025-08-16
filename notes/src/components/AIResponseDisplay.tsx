@@ -7,6 +7,9 @@ import { getUserAISummaries, deleteExpiredAISummaries, deleteAISummary } from '.
 import { getUserAITaskExtractions, deleteAITaskExtraction, deleteExpiredAITaskExtractions } from '../utils/notesFirestore';
 import CreateListFromExtraction from '../utils/CreateListFromExtraction';
 
+// @ts-ignore
+import PeekingPanda from '../assets/peeking_panda.png';
+
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -198,11 +201,27 @@ export default function AISummaryDisplay({ noteId }: { noteId: string | null }) 
                             display: 'flex',
                             flexDirection: 'column',
                             boxShadow: '-4px 4px 16px rgba(0,0,0,0.13)',
-                            overflow: 'hidden',
+                            overflow: 'visible', // allow the panda to peep over the top
                             backdropFilter: 'blur(8px)',
                             WebkitBackdropFilter: 'blur(8px)',
                         }}
                     >
+                        {/* Peeking panda - appears to peek over the top of the panel */}
+                        <img
+                            src={PeekingPanda}
+                            alt="Peeking panda"
+                            style={{
+                                position: 'absolute',
+                                top: -60,
+                                right: 40,
+                                width: 74,
+                                height: 74,
+                                zIndex: 1001,
+                                pointerEvents: 'none',
+                                filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.18))',
+                                borderRadius: 12,
+                            }}
+                        />
                         {/* Header */}
                         <div
                             style={{

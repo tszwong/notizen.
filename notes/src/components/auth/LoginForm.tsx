@@ -131,7 +131,7 @@ export default function LoginFormComponent() {
                 flexDirection: 'column', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
-                minHeight: '60vh',
+                minHeight: '50vh',
                 padding: '0rem 2.5rem',
                 marginTop: '0rem',
                 borderRadius: '60px',
@@ -141,6 +141,7 @@ export default function LoginFormComponent() {
                 marginLeft: 'auto',
                 marginRight: 'auto',
             }}
+            className='upper-layer'
         >
             <span
                 style={{

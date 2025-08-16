@@ -5,6 +5,8 @@ import React, { useRef, useState } from 'react';
 import noteEditor3D from '../assets/note-editor-3d.png';
 // @ts-ignore
 import noteEditor3DBlack from '../assets/note-editor-3d-black.png';
+// @ts-ignore
+import PandaKeyCaps from '../assets/panda_keycaps.png';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -46,7 +48,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
         minHeight: '100vh',
         height: '100vh',
         width: '100vw',
-        backgroundImage: "linear-gradient(to right bottom, #fefae0, #fdf8dc, #fcf5d9, #fcf3d5, #fbf0d2, #faebc7, #f9e7bc, #f8e2b1, #f7d99c, #f6d088, #f6c774, #f6bd60)",
+        background: 'linear-gradient(to bottom right, #606c38 0%, #b0c4b1 70%, #e9edc9 100%)',
         ...retroFont,
         overflow: 'hidden',
       }}
@@ -69,30 +71,50 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           style={{
-            width: '1140px',
-            height: '1140px',
+            // make the image container responsive and centered inside the left column
+            width: 'min(1000px, 80%)',
+            height: 'min(1000px, 80%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             perspective: 900,
             borderRadius: 32,
-
-            transition: 'box-shadow 0.3s',
+            // overflow: 'hidden', // clip the rotated content
+            // transition: 'box-shadow 0.3s',
+            // subtle horizontal offset so the image doesn't sit flush to the very left edge
+            marginLeft: '2.5rem',
+            // boxShadow: '0 8px 24px rgba(122,108,77,0.12)',
           }}
         >
-          <img
-            src={noteEditor3DBlack}
-            alt="Note Editor 3D"
+          <div
             style={{
+              // center the rotated content inside the rounded container
               width: '100%',
               height: '100%',
-              objectFit: 'contain',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               transform: `rotateX(${-tilt.x}deg) rotateY(${tilt.y}deg)`,
               transition: 'transform 0.25s cubic-bezier(.25,.46,.45,.94)',
-              filter: 'drop-shadow(0 8px 24px #7A6C4D55)',
+              transformStyle: 'preserve-3d',
+              willChange: 'transform',
             }}
-            draggable={false}
-          />
+          >
+            <img
+              src={PandaKeyCaps}
+              alt="Note Editor 3D"
+              style={{
+                width: '800px',
+                height: '1000px',
+                display: 'block',
+                objectFit: 'cover',
+                borderRadius: 24,
+                backfaceVisibility: 'hidden',
+              }}
+              draggable={false}
+              // className='upper-layer'
+            />
+          </div>
         </div>
         {/* Optional: Add a subtle mechanical overlay or grid */}
         {/* <div
@@ -108,7 +130,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       {/* Right Side: Form */}
       <div
         style={{
-          flex: '0 0 40%',
+          flex: '0 0 35%',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -142,4 +164,4 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
   );
 };
 
-export default AuthLayout; 
+export default AuthLayout;
